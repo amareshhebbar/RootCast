@@ -2,7 +2,7 @@
 
 # Rootcast
 
-### The flight recorder for AI agents. When an agent quietly does the wrong thing, Rootcast shows you exactly where it went wrong and why.
+Your AI agent failed in production but did not crash. Rootcast shows you which step went wrong and why. *A developer tool for agents running in production*
 
 [![PyPI](https://img.shields.io/badge/pypi-rootcast-3775A9)](https://pypi.org/project/rootcast/)
 [![npm](https://img.shields.io/badge/npm-rootcast-CB3837)](https://www.npmjs.com/package/rootcast)
