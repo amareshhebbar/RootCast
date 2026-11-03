@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rootcast"
+version = "0.1.0"
+description = "The flight recorder for AI agents. Find where an agent went wrong and why."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Amaresh Hebbar", email = "hebbar.gvamaresh@gmail.com" }]
+keywords = ["ai", "agents", "debugging", "observability", "root cause", "replay", "llm"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Debuggers",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/amareshhebbar/rootcast"
+Repository = "https://github.com/amareshhebbar/rootcast"
+
+[project.scripts]
+rootcast = "rootcast.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rootcast"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
