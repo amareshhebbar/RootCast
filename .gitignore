@@ -15,6 +15,7 @@ node_modules/
 coverage/
 .DS_Store
 *.rootcast.json
+!examples/traces/*.rootcast.json
 .rootcast/
 
 package-lock.json

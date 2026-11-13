@@ -1,0 +1,20 @@
+{
+  "stale_policy": {
+    "run_id": "refund-7af3",
+    "fail": "step4",
+    "cause": "step2",
+    "depends_on": {"step1": [], "step2": [], "step3": ["step1", "step2"], "step4": ["step1", "step3"]}
+  },
+  "rag_lookup": {
+    "run_id": "rag-21c9",
+    "fail": "step4",
+    "cause": "step2",
+    "depends_on": {"step1": [], "step2": ["step1"], "step3": ["step2"], "step4": ["step1", "step3"]}
+  },
+  "tool_args": {
+    "run_id": "tool-58d2",
+    "fail": "step4",
+    "cause": "step3",
+    "depends_on": {"step1": [], "step2": ["step1"], "step3": ["step1", "step2"], "step4": ["step3"]}
+  }
+}
