@@ -1,0 +1,117 @@
+{
+  "rootcast_version": "0.1",
+  "run_id": "refund-7af3",
+  "status": "fail",
+  "steps": [
+    {
+      "id": "step1",
+      "name": "read_order",
+      "kind": "tool",
+      "inputs": {
+        "order_id": 4417
+      },
+      "output": {
+        "amount": 129.0,
+        "days_since_purchase": 45,
+        "id": 4417,
+        "year": 2026
+      },
+      "status": "pass",
+      "started_at": 1767225600.0,
+      "ended_at": 1767225600.25
+    },
+    {
+      "id": "step2",
+      "name": "lookup_policy",
+      "kind": "tool",
+      "inputs": {
+        "query": "refund window"
+      },
+      "output": {
+        "query": "refund window",
+        "source": "policy_2024",
+        "window_days": 90,
+        "year": 2024
+      },
+      "status": "pass",
+      "started_at": 1767225600.5,
+      "ended_at": 1767225600.75
+    },
+    {
+      "id": "step3",
+      "name": "decide_refund",
+      "kind": "decision",
+      "inputs": {
+        "order": {
+          "amount": 129.0,
+          "days_since_purchase": 45,
+          "id": 4417,
+          "year": 2026
+        },
+        "policy": {
+          "query": "refund window",
+          "source": "policy_2024",
+          "window_days": 90,
+          "year": 2024
+        }
+      },
+      "output": {
+        "allowed": true,
+        "policy_source": "policy_2024",
+        "window_days": 90
+      },
+      "depends_on": [
+        "step1",
+        "step2"
+      ],
+      "status": "pass",
+      "started_at": 1767225601.0,
+      "ended_at": 1767225601.25
+    },
+    {
+      "id": "step4",
+      "name": "issue_refund",
+      "kind": "tool",
+      "inputs": {
+        "decision": {
+          "allowed": true,
+          "policy_source": "policy_2024",
+          "window_days": 90
+        },
+        "order": {
+          "amount": 129.0,
+          "days_since_purchase": 45,
+          "id": 4417,
+          "year": 2026
+        }
+      },
+      "output": {
+        "order": 4417,
+        "status": "issued",
+        "violation": "outside_window"
+      },
+      "depends_on": [
+        "step1",
+        "step3"
+      ],
+      "status": "fail",
+      "error": "refund issued outside the 30 day policy window",
+      "started_at": 1767225601.5,
+      "ended_at": 1767225601.75
+    }
+  ],
+  "meta": {
+    "framework": "generic",
+    "scenario": "stale policy",
+    "inferred_depends_on": {
+      "step3": [
+        "step1",
+        "step2"
+      ],
+      "step4": [
+        "step1",
+        "step3"
+      ]
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "rootcast_version": "0.1",
+  "run_id": "tool-58d2",
+  "status": "fail",
+  "steps": [
+    {
+      "id": "step1",
+      "name": "read_ticket",
+      "kind": "tool",
+      "inputs": {
+        "ticket_id": "T-1093"
+      },
+      "output": {
+        "customer": "acme-corp-eu",
+        "id": "T-1093",
+        "request": "upgrade to pro plan for 25 seats"
+      },
+      "status": "pass",
+      "started_at": 1767225600.0,
+      "ended_at": 1767225600.25
+    },
+    {
+      "id": "step2",
+      "name": "lookup_account",
+      "kind": "tool",
+      "inputs": {
+        "customer": "acme-corp-eu"
+      },
+      "output": {
+        "customer": "acme-corp-eu",
+        "plan": "basic",
+        "seats": 10
+      },
+      "depends_on": [
+        "step1"
+      ],
+      "status": "pass",
+      "started_at": 1767225600.5,
+      "ended_at": 1767225600.75
+    },
+    {
+      "id": "step3",
+      "name": "plan_action",
+      "kind": "llm",
+      "inputs": {
+        "account": {
+          "customer": "acme-corp-eu",
+          "plan": "basic",
+          "seats": 10
+        },
+        "ticket": {
+          "customer": "acme-corp-eu",
+          "id": "T-1093",
+          "request": "upgrade to pro plan for 25 seats"
+        }
+      },
+      "output": {
+        "args": {
+          "account": "acme-corp-eu",
+          "plan": "pro",
+          "seats": "25 seats"
+        },
+        "tool": "update_subscription"
+      },
+      "depends_on": [
+        "step1",
+        "step2"
+      ],
+      "status": "pass",
+      "started_at": 1767225601.0,
+      "ended_at": 1767225601.25
+    },
+    {
+      "id": "step4",
+      "name": "update_subscription",
+      "kind": "tool",
+      "inputs": {
+        "args": {
+          "account": "acme-corp-eu",
+          "plan": "pro",
+          "seats": "25 seats"
+        }
+      },
+      "depends_on": [
+        "step3"
+      ],
+      "status": "fail",
+      "error": "TypeError('seats must be an integer, got str')",
+      "started_at": 1767225601.5,
+      "ended_at": 1767225601.75
+    }
+  ],
+  "meta": {
+    "framework": "generic",
+    "scenario": "tool argument error",
+    "inferred_depends_on": {
+      "step2": [
+        "step1"
+      ],
+      "step3": [
+        "step1",
+        "step2"
+      ],
+      "step4": [
+        "step3"
+      ]
+    }
+  }
+}
