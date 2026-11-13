@@ -4,7 +4,6 @@ import argparse
 import json
 import sys
 
-from .infer import infer_dependencies
 from .schema import Trace, validate
 
 STATUS_TAG = {"pass": "ok", "warn": "WARN", "fail": "FAIL", "unknown": "..", "cause": "CAUSE"}
@@ -17,10 +16,8 @@ def _render(trace: Trace) -> str:
     lines.append("")
     for step in trace.steps:
         tag = STATUS_TAG.get(step.status, step.status)
-        label = "  " + step.id.ljust(8) + step.name.ljust(22) + tag.ljust(7)
-        if step.depends_on:
-            label += "<- " + ", ".join(step.depends_on)
-        lines.append(label.rstrip())
+        label = "  " + step.id.ljust(8) + step.name.ljust(22) + tag
+        lines.append(label)
         if step.error:
             lines.append("           error: " + step.error)
     return "\n".join(lines)
@@ -44,20 +41,6 @@ def cmd_validate(args) -> int:
     return 0
 
 
-def cmd_infer(args) -> int:
-    trace = Trace.load(args.path)
-    inferred = infer_dependencies(trace, only_undeclared=not args.all)
-    out = args.output or args.path
-    trace.save(out)
-    if inferred:
-        for sid, deps in inferred.items():
-            print(sid + " <- " + ", ".join(deps))
-    else:
-        print("no new dependencies")
-    print("wrote " + out)
-    return 0
-
-
 def cmd_audit(args) -> int:
     trace = Trace.load(args.path)
     print(_render(trace))
@@ -72,7 +55,10 @@ def cmd_replay(args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from . import __version__
+
     parser = argparse.ArgumentParser(prog="rootcast")
+    parser.add_argument("--version", action="version", version="rootcast " + __version__)
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_view = sub.add_parser("view")
@@ -82,12 +68,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_val = sub.add_parser("validate")
     p_val.add_argument("path")
     p_val.set_defaults(func=cmd_validate)
-
-    p_infer = sub.add_parser("infer")
-    p_infer.add_argument("path")
-    p_infer.add_argument("-o", "--output")
-    p_infer.add_argument("--all", action="store_true")
-    p_infer.set_defaults(func=cmd_infer)
 
     p_audit = sub.add_parser("audit")
     p_audit.add_argument("path")

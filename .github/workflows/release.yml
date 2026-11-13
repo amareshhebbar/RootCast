@@ -4,23 +4,87 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Where to upload"
+        type: choice
+        options:
+          - testpypi
+          - pypi
+        default: testpypi
 
 jobs:
-  pypi:
+  check:
     runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write
     defaults:
       run:
         working-directory: packages/python
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install build
-      - run: python -m build
+      - run: pip install build twine pytest
+      - id: version
+        run: echo "version=$(python -c 'import re;print(re.search(r"__version__ = \"(.+)\"", open("src/rootcast/__init__.py").read()).group(1))')" >> "$GITHUB_OUTPUT"
+      - run: pip install -e . && pytest -q
+      - if: github.event_name == 'push'
+        run: python scripts/release_check.py --tag "${GITHUB_REF_NAME}" --index pypi --index testpypi --keep-dist
+      - if: github.event_name == 'workflow_dispatch'
+        run: python scripts/release_check.py --index "${{ inputs.target }}" --keep-dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: packages/python/dist/
+          if-no-files-found: error
+
+  testpypi:
+    needs: check
+    if: github.event_name == 'push' || inputs.target == 'testpypi'
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: packages/python/dist
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/
+
+  testpypi-verify:
+    needs: [check, testpypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: install from TestPyPI
+        run: |
+          for i in 1 2 3 4 5 6; do
+            pip install --no-deps --index-url https://test.pypi.org/simple/ "rootcast==${{ needs.check.outputs.version }}" && break
+            sleep 20
+          done
+          rootcast --version | grep -qx "rootcast ${{ needs.check.outputs.version }}"
+
+  pypi:
+    needs: [check, testpypi-verify]
+    if: github.event_name == 'push' || inputs.target == 'pypi'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
