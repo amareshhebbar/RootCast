@@ -1,0 +1,74 @@
+---
+title: "Audit"
+description: "Score every step, build the decision graph and name the step that caused the failure."
+---
+
+```bash
+rootcast audit <trace> [--baseline PATH ...] [--json]
+```
+
+The audit answers one question: which step caused this failure? It works in two passes.
+
+## 1. Scoring
+
+Every step is scored ok, WARN or FAIL from signals in the trace. Each rule that fires adds a flag that says why.
+
+| Rule | Level | Fires when |
+|---|---|---|
+| `step_error` | FAIL | the step raised or carries error text |
+| `agent_status` | FAIL or WARN | the agent set the status itself |
+| `empty_result` | WARN | a `tool` or `io` step returned nothing |
+| `error_result` | WARN | a `tool` or `io` result is an object with a non empty `error` field |
+| `type_drift` | WARN | a value is a string in the output where the inputs had a number under the same key, or the reverse |
+| `mismatch` | WARN | a `tool` or `io` step was asked for one value of a key (`audience=pediatric`) and answered with another (`audience=adult`) |
+| `stale` | WARN | a step fed a consumer data from an older year than the other steps feeding the same consumer |
+
+`mismatch` does not apply to `llm` and `decision` steps, which are expected to change values.
+
+### Anomalies
+
+Anomaly flags are informational and never change a step's status:
+
+| Flag | Fires when |
+|---|---|
+| `slow` | the step took over 5x the run median, or 5x its usual duration, and at least 1 second |
+| `large_result` | the output is over 10x its usual size |
+| `small_result` | the output is under a tenth of its usual size |
+
+"Usual" needs history. Pass earlier traces of the same agent with `--baseline` (files or folders, repeatable). At least 3 earlier samples of a step are needed before it is compared.
+
+## 2. The cause
+
+The audit builds the decision graph from `depends_on`, takes the step where the run failed (the last FAIL step), and walks back through everything that fed it. The earliest of those ancestors that scoring flagged is the CAUSE. If nothing upstream looks wrong, the failing step itself is blamed.
+
+```
+run rag-21c9  FAIL  answer cites dosage_adult_v3 but the question is pediatric
+
+  step1  parse_question   ok
+  step2  retrieve         CAUSE  asked audience=pediatric, got audience=adult
+  step3  generate_answer  ok
+  step4  check_answer     FAIL   answer cites dosage_adult_v3 but the question is pediatric
+
+  earliest divergence: step2
+  chain: step2 -> step3 -> step4
+  cause: retrieve: asked audience=pediatric, got audience=adult, and that fed check_answer
+
+  flags:
+    step2  WARN  mismatch    asked audience=pediatric, got audience=adult
+    step4  FAIL  step_error  answer cites dosage_adult_v3 but the question is pediatric
+```
+
+## JSON
+
+`--json` prints the audit as data: `failure`, `cause`, `chain`, `summary`, and every step with its `status`, `tag` and `flags`. From Python:
+
+```python
+from rootcast import Trace, audit
+
+result = audit(Trace.load("rag-21c9.rootcast.json"))
+result.cause      # "step2"
+result.chain      # ["step2", "step3", "step4"]
+result.to_dict()
+```
+
+The cause is a candidate until it is proven. [Replay](/replay) proves it.

@@ -1,0 +1,57 @@
+---
+title: "Rootcast"
+description: "The flight recorder for AI agents. Find the exact step where a run went wrong, and prove the fix by replay."
+---
+
+Your AI agent failed in production but did not crash. It produced an answer that looked fine and was wrong. Rootcast shows you which step went wrong and why.
+
+While the agent works, Rootcast records every step: its inputs, its output, and which earlier steps fed it. When a run fails, Rootcast:
+
+1. Draws the chain of decisions as a map, not a wall of logs.
+2. Points to the earliest step where things went off the rails. Step 4 may have failed, but the real mistake was step 2 handing it stale data.
+3. Replays the run with that one value changed, and shows whether the outcome flips from FAIL to PASS.
+
+## What it looks like
+
+This is the real output on a sample run in the repository, where a refund agent read the 2024 policy for a 2026 order:
+
+```
+run refund-7af3  FAIL  refund issued outside the 30 day policy window
+
+  step1  read_order     ok
+  step2  lookup_policy  CAUSE  returned 2024 data, read_order is 2026
+  step3  decide_refund  ok
+  step4  issue_refund   FAIL   refund issued outside the 30 day policy window
+
+  earliest divergence: step2
+  chain: step2 -> step3 -> step4
+  cause: lookup_policy: returned 2024 data, read_order is 2026, and that fed issue_refund
+```
+
+Then prove it. Swap in the 2026 policy, and only the steps downstream of the lookup change:
+
+```
+  changed: step2, step3, step4
+  untouched: step1
+  run: FAIL -> PASS  (flipped)
+```
+
+## Three layers
+
+<CardGroup cols={3}>
+  <Card title="Capture" icon="circle-dot" href="/recording">
+    A thin recorder for Python and Node writes one portable trace file. It only watches, it never changes what the agent does.
+  </Card>
+  <Card title="Audit" icon="magnifying-glass" href="/audit">
+    Scores every step ok, WARN or FAIL, builds the decision graph and names the earliest step that caused the failure.
+  </Card>
+  <Card title="Replay" icon="rotate" href="/replay">
+    Re runs the trace with one value changed and diffs the outcome step by step. External calls are never made.
+  </Card>
+</CardGroup>
+
+The [web UI](/ui) puts all three on one page: drop in a trace, see the map with the cause highlighted, click to replay.
+
+<Card title="Quickstart" icon="rocket" href="/quickstart" horizontal>
+  Record a trace, audit it and replay it in five minutes.
+</Card>

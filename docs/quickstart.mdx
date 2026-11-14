@@ -1,0 +1,107 @@
+---
+title: "Quickstart"
+description: "Record a trace, find the cause of a failure, and prove the fix."
+---
+
+<Steps>
+  <Step title="Install">
+    The recorder is available for Python and Node. The `audit`, `replay` and `serve` commands ship with the Python package and work on traces from either language.
+
+    <CodeGroup>
+    ```bash Python
+    pip install rootcast
+    ```
+
+    ```bash Node
+    npm install rootcast
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Record a run">
+    Wrap the functions your agent calls. Arguments become the step inputs, the return value its output, and which step fed which is inferred from data flow.
+
+    <Tabs>
+      <Tab title="Python">
+        ```python
+        from rootcast import Recorder
+
+        rec = Recorder(run_id="refund-7af3")
+
+        @rec.record(kind="tool")
+        def read_order(order_id):
+            return {"id": order_id, "year": 2026, "days_since_purchase": 45}
+
+        @rec.record(kind="tool")
+        def lookup_policy(query):
+            return {"source": "policy_2024", "year": 2024, "window_days": 90}
+
+        @rec.record(kind="decision")
+        def decide_refund(order, policy):
+            return {"allowed": order["days_since_purchase"] <= policy["window_days"]}
+
+        order = read_order(4417)
+        policy = lookup_policy("refund window")
+        decide_refund(order, policy)
+
+        rec.save("refund-7af3.rootcast.json")
+        ```
+      </Tab>
+      <Tab title="Node">
+        ```js
+        import { Recorder } from "rootcast";
+
+        const rec = new Recorder({ runId: "refund-7af3" });
+
+        const readOrder = rec.record(async function read_order(order_id) {
+          return { id: order_id, year: 2026, days_since_purchase: 45 };
+        }, { kind: "tool" });
+
+        const lookupPolicy = rec.record(async function lookup_policy(query) {
+          return { source: "policy_2024", year: 2024, window_days: 90 };
+        }, { kind: "tool" });
+
+        const decideRefund = rec.record(function decide_refund(order, policy) {
+          return { allowed: order.days_since_purchase <= policy.window_days };
+        }, { kind: "decision" });
+
+        const order = await readOrder(4417);
+        const policy = await lookupPolicy("refund window");
+        decideRefund(order, policy);
+
+        rec.save("refund-7af3.rootcast.json");
+        ```
+      </Tab>
+    </Tabs>
+
+    Both write the same file, byte for byte. See [Recording](/recording) for the context manager form, `current_step()`, the trace store and large payloads.
+  </Step>
+
+  <Step title="Find the cause">
+    ```bash
+    rootcast audit refund-7af3.rootcast.json
+    ```
+
+    Every step gets a tag (ok, WARN, FAIL, CAUSE), and the audit prints the earliest divergence, the chain from cause to failure, and a flags list explaining each score. See [Audit](/audit).
+  </Step>
+
+  <Step title="Prove the fix">
+    The repository ships three failing sample runs with their agents. From a clone:
+
+    ```bash
+    rootcast replay examples/traces/stale_policy.rootcast.json \
+      --agent examples/scenarios/stale_policy.py \
+      --set step2.output=policy_2026
+    ```
+
+    The output ends with `run: FAIL -> PASS  (flipped)`. See [Replay](/replay) for writing a replay agent for your own code.
+  </Step>
+
+  <Step title="Open the map">
+    ```bash
+    rootcast serve --open
+    ```
+
+    Drop a trace onto the page. The cause is highlighted. Click it, pick a value and press **Run replay** to watch the banner flip to PASS. See [Web UI](/ui).
+  </Step>
+</Steps>

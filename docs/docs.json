@@ -1,0 +1,47 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Rootcast",
+  "description": "The flight recorder for AI agents. Find the exact step where an agent run went wrong, and prove the fix by replay.",
+  "colors": {
+    "primary": "#7C3AED",
+    "light": "#A78BFA",
+    "dark": "#6D28D9"
+  },
+  "favicon": "/favicon.svg",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get started",
+        "pages": ["index", "quickstart"]
+      },
+      {
+        "group": "Guides",
+        "pages": ["recording", "audit", "replay", "ui"]
+      },
+      {
+        "group": "Reference",
+        "pages": ["cli", "trace-schema", "trace-files"]
+      },
+      {
+        "group": "Contributing",
+        "pages": ["releasing"]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      { "label": "PyPI", "href": "https://pypi.org/project/rootcast/" },
+      { "label": "npm", "href": "https://www.npmjs.com/package/rootcast" }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/amareshhebbar/RootCast"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/amareshhebbar/RootCast"
+    }
+  }
+}

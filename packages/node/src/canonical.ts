@@ -108,8 +108,8 @@ export function canonicalJson(value: unknown): string {
 }
 
 /** Canonical form as UTF-8 bytes. */
-export function canonicalBytes(value: unknown): Buffer {
-  return Buffer.from(canonicalJson(value), "utf-8");
+export function canonicalBytes(value: unknown): Uint8Array {
+  return new TextEncoder().encode(canonicalJson(value));
 }
 
 /** "sha256:" plus the lowercase hex sha256 of the canonical bytes. */

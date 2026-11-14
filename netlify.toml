@@ -1,0 +1,13 @@
+# Netlify serves the docs site by proxying to the Mintlify deployment of docs/.
+# Mintlify builds docs/ on every push to main (see docs/releasing.md, Docs site).
+# Change the target if the Mintlify subdomain is not "rootcast".
+
+[build]
+  publish = "netlify/public"
+  command = "echo docs are built by Mintlify, Netlify only proxies"
+
+[[redirects]]
+  from = "/*"
+  to = "https://rootcast.mintlify.site/:splat"
+  status = 200
+  force = true

@@ -1,4 +1,7 @@
-# Replay
+---
+title: "Replay"
+description: "Re run a recorded trace with one value changed and diff the outcome step by step."
+---
 
 `rootcast replay` proves a cause. It re runs a recorded trace with one value changed and reports, step by step, what changed and whether the run outcome flips.
 

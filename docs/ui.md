@@ -1,4 +1,7 @@
-# The Rootcast UI
+---
+title: "Web UI"
+description: "The decision map: load a trace, see the cause highlighted, click to replay."
+---
 
 A decision map of one run: every step a node, every edge "this output fed that step", colored by score, with the root cause highlighted and replay one click away.
 

@@ -1,4 +1,7 @@
-# Rootcast trace files on disk
+---
+title: "Trace files"
+description: "How traces are named, where large payloads live, and how many runs are kept in a trace store."
+---
 
 How traces are named, where large payloads live, and how many runs are kept together. Every SDK follows these rules, so a trace written by Node can be read by Python and the other way round. The content of a file is defined in [trace-schema.md](./trace-schema.md).
 
