@@ -151,6 +151,12 @@ def cmd_replay(args) -> int:
     return 0
 
 
+def cmd_serve(args) -> int:
+    from .serve import serve
+
+    return serve(args)
+
+
 def build_parser() -> argparse.ArgumentParser:
     from . import __version__
 
@@ -190,6 +196,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_replay.add_argument("--agent", metavar="FILE.py", help="agent module defining replay_agent(rec)")
     p_replay.add_argument("--json", action="store_true", help="print the replay result as JSON")
     p_replay.set_defaults(func=cmd_replay)
+
+    p_serve = sub.add_parser("serve", help="start the local web UI and the engine behind it")
+    p_serve.add_argument("--port", type=int, default=8765)
+    p_serve.add_argument("--agent", action="append", default=[], metavar="FILE.py",
+                         help="replay agent module; repeat for several (default: the repo's example scenarios)")
+    p_serve.add_argument("--traces", action="append", default=[], metavar="DIR",
+                         help="folder of traces to list as samples; repeat for several")
+    p_serve.add_argument("--open", action="store_true", help="open the UI in the browser")
+    p_serve.set_defaults(func=cmd_serve)
 
     return parser
 

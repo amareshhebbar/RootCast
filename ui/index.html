@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rootcast</title>
+<style>
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --ink: #16181d;
+  --muted: #5f6672;
+  --line: #dde1e7;
+  --edge: #9aa3b0;
+  --chain: #7c3aed;
+  --pass: #1f8a4c;
+  --pass-bg: #e8f6ee;
+  --warn: #b26a00;
+  --warn-bg: #fff4e0;
+  --fail: #c62828;
+  --fail-bg: #fdecec;
+  --cause: #7c3aed;
+  --cause-bg: #f1eafe;
+  --inject: #1d63d6;
+  --inject-bg: #e8f0fd;
+  --code-bg: #f1f3f6;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --ink: #e7e9ee;
+    --muted: #9aa1ad;
+    --line: #2a2f3a;
+    --edge: #5b6372;
+    --chain: #a78bfa;
+    --pass: #4ade80;
+    --pass-bg: #12291c;
+    --warn: #fbbf24;
+    --warn-bg: #2d2410;
+    --fail: #f87171;
+    --fail-bg: #2f1517;
+    --cause: #a78bfa;
+    --cause-bg: #241a3d;
+    --inject: #60a5fa;
+    --inject-bg: #12233d;
+    --code-bg: #11141a;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1115; --panel: #171a21; --ink: #e7e9ee; --muted: #9aa1ad; --line: #2a2f3a; --edge: #5b6372;
+  --chain: #a78bfa; --pass: #4ade80; --pass-bg: #12291c; --warn: #fbbf24; --warn-bg: #2d2410;
+  --fail: #f87171; --fail-bg: #2f1517; --cause: #a78bfa; --cause-bg: #241a3d; --inject: #60a5fa;
+  --inject-bg: #12233d; --code-bg: #11141a; --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+button, select, textarea, input { font: inherit; color: inherit; }
+code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+header {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+}
+.brand { font-weight: 700; font-size: 16px; letter-spacing: .2px; margin-right: 8px; }
+.brand span { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 6px; }
+.spacer { flex: 1; }
+.btn {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 8px;
+  padding: 6px 12px; cursor: pointer; white-space: nowrap;
+}
+.btn:hover { border-color: var(--edge); }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn.primary:disabled { opacity: .5; cursor: default; }
+.btn.small { padding: 3px 9px; font-size: 12.5px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 5px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+main { padding: 16px 20px 32px; max-width: 1400px; margin: 0 auto; }
+
+/* Empty state */
+#drop {
+  border: 2px dashed var(--line); border-radius: 14px; padding: 56px 20px; text-align: center;
+  background: var(--panel); margin-top: 24px;
+}
+#drop h1 { font-size: 22px; margin: 0 0 6px; }
+#drop p { color: var(--muted); margin: 0 0 18px; }
+#drop .samples { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+body.dragging #drop, body.dragging .map-wrap { border-color: var(--inject); }
+
+/* Banner */
+#banner {
+  display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+  border-radius: 14px; padding: 16px 18px; margin-bottom: 14px;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow);
+  transition: background .4s, border-color .4s;
+}
+#banner[data-status="fail"] { background: var(--fail-bg); border-color: var(--fail); }
+#banner[data-status="pass"] { background: var(--pass-bg); border-color: var(--pass); }
+#banner .pill {
+  font-weight: 800; font-size: 20px; letter-spacing: 1px; padding: 6px 14px; border-radius: 10px;
+  color: #fff; min-width: 84px; text-align: center;
+}
+#banner[data-status="fail"] .pill { background: var(--fail); }
+#banner[data-status="pass"] .pill { background: var(--pass); }
+#banner[data-status="unknown"] .pill { background: var(--muted); }
+#banner .pill.flip { animation: flip .7s ease; }
+@keyframes flip { 0% { transform: rotateX(90deg); } 100% { transform: rotateX(0); } }
+#banner .was { text-decoration: line-through; color: var(--fail); font-weight: 700; margin-right: 6px; }
+#banner .text { flex: 1; min-width: 240px; }
+#banner .headline { font-weight: 650; font-size: 15.5px; }
+#banner .sub { color: var(--muted); margin-top: 2px; }
+#banner .sub b { color: var(--ink); }
+
+/* Layout */
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 14px; align-items: start; }
+@media (max-width: 980px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) {
+  header, main { padding-left: 16px; padding-right: 16px; }
+  #banner .text { min-width: 0; flex-basis: 100%; }
+}
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+.map-wrap { padding: 10px; overflow: auto; }
+.map-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 4px 6px 8px; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 12.5px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+#map svg { display: block; width: 100%; height: auto; }
+
+/* Nodes */
+.node { cursor: pointer; outline: none; }
+.node rect.box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
+.node .t-id { fill: var(--muted); font-size: 11.5px; }
+.node .t-name { fill: var(--ink); font-size: 14px; font-weight: 650; }
+.node .t-kind { fill: var(--muted); font-size: 11.5px; }
+.node .badge rect { rx: 6; }
+.node .badge text { font-size: 11px; font-weight: 750; letter-spacing: .4px; fill: #fff; }
+.node[data-tag="pass"] rect.box { fill: var(--pass-bg); stroke: var(--pass); }
+.node[data-tag="pass"] .badge rect { fill: var(--pass); }
+.node[data-tag="warn"] rect.box { fill: var(--warn-bg); stroke: var(--warn); }
+.node[data-tag="warn"] .badge rect { fill: var(--warn); }
+.node[data-tag="fail"] rect.box { fill: var(--fail-bg); stroke: var(--fail); stroke-width: 2; }
+.node[data-tag="fail"] .badge rect { fill: var(--fail); }
+.node[data-tag="cause"] rect.box { fill: var(--cause-bg); stroke: var(--cause); stroke-width: 3; }
+.node[data-tag="cause"] .badge rect { fill: var(--cause); }
+.node[data-tag="unknown"] .badge rect { fill: var(--muted); }
+.node .halo { fill: none; stroke: var(--cause); stroke-width: 2; opacity: .5; animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: .15; } 50% { opacity: .65; } }
+.node .cause-label { fill: var(--cause); font-size: 11.5px; font-weight: 800; letter-spacing: .8px; }
+.node[aria-selected="true"] rect.box { stroke: var(--ink); stroke-width: 3; }
+.node:focus-visible rect.box { stroke: var(--inject); stroke-width: 3; }
+.node[data-change="unchanged"] { opacity: .55; }
+.node[data-change="injected"] rect.box { stroke: var(--inject); stroke-dasharray: 6 3; stroke-width: 2.5; }
+.node .change { font-size: 11px; font-weight: 700; }
+.node[data-change="injected"] .change { fill: var(--inject); }
+.node[data-change="recomputed"] .change { fill: var(--ink); }
+.node[data-change="unchanged"] .change { fill: var(--muted); }
+.edge { fill: none; stroke: var(--edge); stroke-width: 1.6; }
+.edge.inferred { stroke-dasharray: 5 4; }
+.edge.chain { stroke: var(--chain); stroke-width: 2.6; }
+#arrow path { fill: var(--edge); }
+#arrow-chain path { fill: var(--chain); }
+
+/* Detail */
+#detail { padding: 16px; }
+#detail h2 { font-size: 16px; margin: 0; }
+#detail h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin: 18px 0 6px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.chip {
+  display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 650;
+  border: 1px solid var(--line); color: var(--muted);
+}
+.chip.pass { color: var(--pass); border-color: var(--pass); }
+.chip.warn { color: var(--warn); border-color: var(--warn); }
+.chip.fail { color: var(--fail); border-color: var(--fail); }
+.chip.cause { color: #fff; background: var(--cause); border-color: var(--cause); }
+.chip.info { color: var(--inject); border-color: var(--inject); }
+.flag { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 6px; }
+.flag .rule { font-weight: 650; margin: 0 6px; }
+.flag.fail { border-color: var(--fail); background: var(--fail-bg); }
+.flag.warn { border-color: var(--warn); background: var(--warn-bg); }
+.note { color: var(--muted); }
+pre.json {
+  margin: 0; padding: 10px; border-radius: 8px; background: var(--code-bg); border: 1px solid var(--line);
+  max-height: 220px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+}
+.links button { border: 0; background: none; color: var(--inject); cursor: pointer; padding: 0 4px 0 0; }
+table.diff { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
+table.diff td { border-top: 1px solid var(--line); padding: 4px 6px; vertical-align: top;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+table.diff td:first-child { width: 46%; }
+table.diff td.before { color: var(--fail); text-decoration: line-through; }
+table.diff td.after { color: var(--pass); }
+
+/* Replay panel */
+.replay { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 4px; }
+.replay textarea {
+  width: 100%; min-height: 110px; resize: vertical; padding: 8px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--code-bg);
+}
+.replay select { width: 100%; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); }
+.replay label { display: block; font-size: 12.5px; color: var(--muted); margin: 8px 0 4px; }
+.err { color: var(--fail); background: var(--fail-bg); border: 1px solid var(--fail); border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
+.ok { color: var(--pass); }
+.pending { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.pending code { background: var(--inject-bg); color: var(--inject); padding: 2px 6px; border-radius: 6px; }
+#toast {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--bg);
+  padding: 8px 14px; border-radius: 8px; display: none; max-width: 90vw;
+}
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Rootcast<span>decision map</span></div>
+  <button class="btn" id="open-btn" type="button">Open trace</button>
+  <input id="file" type="file" accept=".json,application/json" class="hidden">
+  <select id="sample-select" class="btn hidden" aria-label="Open a sample"></select>
+  <div class="spacer"></div>
+  <span class="note mono" id="run-label"></span>
+</header>
+
+<main>
+  <section id="drop">
+    <h1>Drop a trace to find where your agent went wrong</h1>
+    <p>Any <code>*.rootcast.json</code> file. It stays on your machine, the local Rootcast engine analyses it.</p>
+    <button class="btn primary" id="drop-open" type="button">Choose a trace file</button>
+    <div class="samples" id="drop-samples"></div>
+    <p class="note" id="engine-note" style="margin-top:18px"></p>
+  </section>
+
+  <section id="app" class="hidden">
+    <div id="banner" data-status="unknown" role="status" aria-live="polite">
+      <div class="pill" id="banner-pill">..</div>
+      <div class="text">
+        <div class="headline" id="banner-headline"></div>
+        <div class="sub" id="banner-sub"></div>
+      </div>
+      <button class="btn" id="banner-cause" type="button">Inspect cause</button>
+    </div>
+
+    <div class="grid">
+      <div class="card map-wrap">
+        <div class="map-head">
+          <div class="seg hidden" id="view-toggle" role="group" aria-label="View">
+            <button type="button" data-view="original" aria-pressed="true">Original run</button>
+            <button type="button" data-view="replay" aria-pressed="false">After replay</button>
+          </div>
+          <div class="spacer"></div>
+          <div class="legend">
+            <span><i style="background:var(--pass)"></i>ok</span>
+            <span><i style="background:var(--warn)"></i>WARN</span>
+            <span><i style="background:var(--fail)"></i>FAIL</span>
+            <span><i style="background:var(--cause)"></i>CAUSE</span>
+            <span>&#9135; fed into &nbsp; &#8943; inferred</span>
+          </div>
+        </div>
+        <div id="map"></div>
+      </div>
+      <aside class="card" id="detail"><p class="note">Click a step on the map.</p></aside>
+    </div>
+  </section>
+</main>
+<div id="toast" role="alert"></div>
+
+<script>
+"use strict";
+
+const NODE_W = 210, NODE_H = 76, GAP_X = 84, GAP_Y = 30, PAD = 22, TOP = 26;
+const TAG_TEXT = { pass: "ok", warn: "WARN", fail: "FAIL", cause: "CAUSE", unknown: ".." };
+const SVG = "http://www.w3.org/2000/svg";
+
+const S = {
+  info: null,       // /api/info
+  label: "",        // file or sample name
+  data: null,       // /api/audit response for the original run
+  replay: null,     // /api/replay response
+  sets: [],         // injections of the last successful replay
+  view: "original",
+  selected: null,
+  replayError: null,
+};
+
+const $ = (id) => document.getElementById(id);
+
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of children.flat()) {
+    if (c === null || c === undefined || c === false) continue;
+    node.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return node;
+}
+
+function svg(tag, attrs, ...children) {
+  const node = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === undefined || v === null) continue;
+    if (k.startsWith("on")) node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v);
+  }
+  for (const c of children.flat()) {
+    if (c === null || c === undefined) continue;
+    node.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return node;
+}
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.style.display = "block";
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => (t.style.display = "none"), 5000);
+}
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  let data;
+  try { data = await res.json(); } catch { data = { error: "the engine sent an unreadable answer" }; }
+  if (!res.ok) {
+    const err = new Error(data.error || res.statusText);
+    err.payload = data;
+    throw err;
+  }
+  return data;
+}
+
+// Loading ----------------------------------------------------------------
+
+async function loadTrace(trace, label) {
+  try {
+    S.data = await api("/api/audit", { trace });
+  } catch (err) {
+    toast(err.message);
+    return false;
+  }
+  S.label = label;
+  S.replay = null;
+  S.sets = [];
+  S.view = "original";
+  S.replayError = null;
+  const audit = S.data.audit;
+  S.selected = audit.cause || audit.failure || S.data.trace.steps[0]?.id || null;
+  $("drop").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("run-label").textContent = label + "  ·  run " + S.data.trace.run_id;
+  render();
+  return true;
+}
+
+async function loadSample(name) {
+  try {
+    const trace = await api("/api/sample?name=" + encodeURIComponent(name));
+    return await loadTrace(trace, name);
+  } catch (err) {
+    toast(err.message);
+    return false;
+  }
+}
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    let trace;
+    try { trace = JSON.parse(reader.result); } catch { toast(file.name + " is not JSON"); return; }
+    loadTrace(trace, file.name);
+  };
+  reader.readAsText(file);
+}
+
+// Model helpers -----------------------------------------------------------
+
+function steps() { return S.data.trace.steps; }
+function stepById(id) { return steps().find((s) => s.id === id); }
+function auditStep(id, audit) { return (audit || S.data.audit).steps.find((s) => s.step_id === id); }
+function diffStep(id) { return S.replay && S.replay.result.steps.find((s) => s.step_id === id); }
+function showingReplay() { return S.view === "replay" && S.replay; }
+
+function outputOf(step, trace) {
+  if (step.output_ref && trace.blobs && step.output_ref in trace.blobs) return trace.blobs[step.output_ref];
+  return step.output;
+}
+
+function tagFor(id) {
+  if (showingReplay()) return auditStep(id, S.replay.audit).tag;
+  return auditStep(id).tag;
+}
+
+// Banner -------------------------------------------------------------------
+
+function renderBanner() {
+  const banner = $("banner"), pill = $("banner-pill");
+  const audit = S.data.audit;
+  const headline = $("banner-headline"), sub = $("banner-sub");
+  headline.replaceChildren();
+  sub.replaceChildren();
+  const causeBtn = $("banner-cause");
+
+  if (showingReplay()) {
+    const st = S.replay.result.status;
+    const prev = banner.dataset.status;
+    banner.dataset.status = st.after;
+    pill.textContent = st.after.toUpperCase();
+    if (prev !== st.after) { pill.classList.remove("flip"); void pill.offsetWidth; pill.classList.add("flip"); }
+    if (st.flipped) {
+      headline.append(el("span", { class: "was" }, st.before.toUpperCase()), "→ " + st.after.toUpperCase() + " after replay");
+    } else {
+      headline.append("Replay did not change the outcome (" + st.before.toUpperCase() + " → " + st.after.toUpperCase() + ")");
+    }
+    const changed = S.replay.result.changed_steps;
+    const untouched = S.replay.result.steps.filter((d) => !d.changed).map((d) => d.step_id);
+    sub.append(
+      "With ", el("code", {}, S.sets.join("  ")), ". ",
+      st.flipped && st.after === "pass" && audit.cause && S.sets.some((s) => s.startsWith(audit.cause + "."))
+        ? el("b", {}, "Cause proven. ") : "",
+      "Changed: " + (changed.join(", ") || "none") + ". Untouched: " + (untouched.join(", ") || "none") + "."
+    );
+    causeBtn.classList.add("hidden");
+    return;
+  }
+
+  banner.dataset.status = S.data.trace.status;
+  pill.textContent = S.data.trace.status.toUpperCase();
+  if (audit.failure) {
+    const fail = auditStep(audit.failure);
+    const problem = fail.flags.find((f) => f.level === "fail" || f.level === "warn");
+    headline.append(problem ? problem.message : stepById(audit.failure).name + " failed");
+    if (audit.cause && audit.cause !== audit.failure) {
+      sub.append("Cause: ", el("b", {}, audit.cause + " " + stepById(audit.cause).name), " · " + audit.summary);
+      sub.append(el("div", {}, "Chain: " + audit.chain.join(" → ")));
+      causeBtn.classList.remove("hidden");
+    } else {
+      sub.append(audit.summary || "");
+      causeBtn.classList.add("hidden");
+    }
+  } else {
+    headline.append("No failure in this run");
+    sub.append(steps().length + " steps, nothing to explain.");
+    causeBtn.classList.add("hidden");
+  }
+}
+
+// Map ----------------------------------------------------------------------
+
+function layout() {
+  const depth = {}, pos = {};
+  for (const s of steps()) {
+    const parents = (s.depends_on || []).filter((d) => d in depth);
+    depth[s.id] = parents.length ? 1 + Math.max(...parents.map((p) => depth[p])) : 0;
+  }
+  const cols = [];
+  for (const s of steps()) (cols[depth[s.id]] ||= []).push(s.id);
+  const maxRows = Math.max(1, ...cols.map((c) => c.length));
+  cols.forEach((ids, d) => {
+    const offset = ((maxRows - ids.length) * (NODE_H + GAP_Y)) / 2;
+    ids.forEach((id, r) => {
+      pos[id] = { x: PAD + d * (NODE_W + GAP_X), y: PAD + TOP + offset + r * (NODE_H + GAP_Y) };
+    });
+  });
+  return {
+    pos,
+    width: PAD * 2 + cols.length * NODE_W + Math.max(0, cols.length - 1) * GAP_X,
+    height: PAD * 2 + TOP + maxRows * NODE_H + (maxRows - 1) * GAP_Y,
+  };
+}
+
+function trim(text, max) { return text.length > max ? text.slice(0, max - 1) + "…" : text; }
+
+function renderMap() {
+  const { pos, width, height } = layout();
+  const audit = S.data.audit;
+  const chainPairs = new Set();
+  if (!showingReplay()) {
+    for (let i = 1; i < audit.chain.length; i++) chainPairs.add(audit.chain[i - 1] + ">" + audit.chain[i]);
+  }
+  const root = svg("svg", { viewBox: "0 0 " + width + " " + height, role: "img",
+    style: "max-width:" + width + "px;min-width:" + Math.round(width * 0.6) + "px",
+    "aria-label": "Decision map of run " + S.data.trace.run_id });
+  root.append(svg("defs", {},
+    svg("marker", { id: "arrow", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto" },
+      svg("path", { d: "M0,0 L10,5 L0,10 z" })),
+    svg("marker", { id: "arrow-chain", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto" },
+      svg("path", { d: "M0,0 L10,5 L0,10 z" }))));
+
+  for (const e of S.data.edges) {
+    const a = pos[e.from], b = pos[e.to];
+    if (!a || !b) continue;
+    const x1 = a.x + NODE_W, y1 = a.y + NODE_H / 2, x2 = b.x - 2, y2 = b.y + NODE_H / 2;
+    const mid = (x1 + x2) / 2;
+    const chain = chainPairs.has(e.from + ">" + e.to);
+    const skips = b.x - a.x > NODE_W + GAP_X + 1;
+    const lift = Math.min(a.y, b.y) - GAP_Y / 2 - 4;
+    const d = skips
+      ? `M${x1},${y1} C${x1 + GAP_X / 2},${y1} ${x1 + GAP_X / 2},${lift} ${x1 + GAP_X},${lift} ` +
+        `L${x2 - GAP_X},${lift} C${x2 - GAP_X / 2},${lift} ${x2 - GAP_X / 2},${y2} ${x2},${y2}`
+      : `M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2},${y2}`;
+    root.append(svg("path", {
+      class: "edge" + (e.inferred ? " inferred" : "") + (chain ? " chain" : ""),
+      d,
+      "marker-end": chain ? "url(#arrow-chain)" : "url(#arrow)",
+    }, svg("title", {}, e.from + " fed " + e.to + (e.inferred ? " (inferred from data flow)" : ""))));
+  }
+
+  for (const s of steps()) {
+    const p = pos[s.id];
+    const tag = tagFor(s.id);
+    const diff = showingReplay() ? diffStep(s.id) : null;
+    const badge = TAG_TEXT[tag] || tag;
+    const bw = 12 + badge.length * 7.5;
+    const g = svg("g", {
+      class: "node", "data-id": s.id, "data-tag": tag, "data-change": diff ? diff.change : null,
+      transform: `translate(${p.x},${p.y})`, tabindex: 0, role: "button",
+      "aria-selected": String(S.selected === s.id),
+      "aria-label": s.id + " " + s.name + ", " + badge,
+      onclick: () => select(s.id),
+      onkeydown: (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(s.id); } },
+    });
+    if (tag === "cause") {
+      g.append(svg("rect", { class: "halo", x: -6, y: -6, width: NODE_W + 12, height: NODE_H + 12, rx: 14 }));
+      g.append(svg("text", { class: "cause-label", x: 2, y: -11 }, "ROOT CAUSE"));
+    }
+    g.append(
+      svg("title", {}, s.id + " " + s.name),
+      svg("rect", { class: "box", width: NODE_W, height: NODE_H, rx: 10 }),
+      svg("text", { class: "t-id", x: 12, y: 20 }, s.id),
+      svg("text", { class: "t-name", x: 12, y: 42 }, trim(s.name, 22)),
+      svg("text", { class: diff ? "change" : "t-kind", x: 12, y: 62 }, diff ? diff.change : s.kind),
+      svg("g", { class: "badge", transform: `translate(${NODE_W - bw - 10},9)` },
+        svg("rect", { width: bw, height: 20 }),
+        svg("text", { x: bw / 2, y: 14, "text-anchor": "middle" }, badge)),
+    );
+    root.append(g);
+  }
+  $("map").replaceChildren(root);
+}
+
+// Detail and replay panel ---------------------------------------------------
+
+function jsonBlock(value) {
+  return el("pre", { class: "json" }, value === undefined ? "nothing" : JSON.stringify(value, null, 2));
+}
+
+function select(id) {
+  S.selected = id;
+  renderMap();
+  renderDetail();
+}
+
+function stepLinks(ids) {
+  if (!ids.length) return el("span", { class: "note" }, "none");
+  return el("span", { class: "links" }, ids.map((id) =>
+    el("button", { type: "button", onclick: () => select(id) }, id + " " + stepById(id).name)));
+}
+
+function renderDetail() {
+  const box = $("detail");
+  const id = S.selected;
+  const step = id && stepById(id);
+  if (!step) { box.replaceChildren(el("p", { class: "note" }, "Click a step on the map.")); return; }
+  const audit = S.data.audit;
+  const a = auditStep(id);
+  const tag = tagFor(id);
+  const diff = showingReplay() ? diffStep(id) : null;
+  const replayedStep = showingReplay() ? S.replay.result.replayed_trace.steps.find((s) => s.id === id) : null;
+  const shown = replayedStep || step;
+  const trace = replayedStep ? S.replay.result.replayed_trace : S.data.trace;
+  const children = steps().filter((s) => (s.depends_on || []).includes(id)).map((s) => s.id);
+
+  const parts = [
+    el("div", { class: "row" },
+      el("h2", {}, step.name),
+      el("span", { class: "chip " + tag }, TAG_TEXT[tag] || tag),
+      el("span", { class: "chip" }, step.kind),
+      el("span", { class: "note mono" }, step.id)),
+  ];
+
+  // Why it was scored this way.
+  parts.push(el("h3", {}, "Why this score"));
+  if (!showingReplay() && id === audit.cause && audit.cause !== audit.failure) {
+    parts.push(el("p", {}, el("b", {}, "Root cause. "),
+      "The earliest step that fed the failure (" + audit.failure + ") and looks wrong. Chain: " + audit.chain.join(" → ") + "."));
+  }
+  const flags = (showingReplay() ? auditStep(id, S.replay.audit) : a).flags;
+  if (flags.length) {
+    for (const f of flags) {
+      parts.push(el("div", { class: "flag " + f.level },
+        el("span", { class: "chip " + f.level }, f.level === "info" ? "info" : f.level.toUpperCase()),
+        el("span", { class: "rule mono" }, f.rule), f.message));
+    }
+  } else {
+    parts.push(el("p", { class: "note" }, "No scoring signal fired: no error, no agent status, no empty, mismatched, drifted or stale data."));
+  }
+
+  if (diff) {
+    parts.push(el("h3", {}, "In the replay: " + diff.change));
+    const rows = [
+      ...diff.inputs.map((c) => ["inputs" + (c.path ? "." + c.path : ""), c]),
+      ...diff.output.map((c) => ["output" + (c.path ? "." + c.path : ""), c]),
+    ];
+    if (diff.status.before !== diff.status.after) {
+      rows.unshift(["status", { before: diff.status.before, after: diff.status.after }]);
+    }
+    if (rows.length) {
+      parts.push(el("table", { class: "diff" }, rows.map(([path, c]) => el("tr", {},
+        el("td", { class: "mono", title: path }, path),
+        el("td", { class: "before mono", title: JSON.stringify(c.before) }, JSON.stringify(c.before)),
+        el("td", { class: "after mono", title: JSON.stringify(c.after) }, JSON.stringify(c.after))))));
+    } else {
+      parts.push(el("p", { class: "note" }, "Same inputs as the recording, so the recorded result was reused."));
+    }
+  }
+
+  if (shown.error) parts.push(el("h3", {}, "Error"), el("pre", { class: "json" }, shown.error));
+  parts.push(el("h3", {}, "Inputs"), jsonBlock(shown.inputs));
+  parts.push(el("h3", {}, "Output"), jsonBlock(outputOf(shown, trace)));
+  parts.push(el("h3", {}, "Data flow"),
+    el("div", {}, "Fed by: ", stepLinks(step.depends_on || [])),
+    el("div", {}, "Feeds: ", stepLinks(children)));
+  if (typeof step.started_at === "number" && typeof step.ended_at === "number") {
+    parts.push(el("p", { class: "note" }, "Took " + +(step.ended_at - step.started_at).toFixed(3) + "s"));
+  }
+
+  parts.push(replayPanel(step));
+  box.replaceChildren(...parts);
+}
+
+function replayPanel(step) {
+  const agent = S.data.agent;
+  const wrap = el("div", { class: "replay" }, el("h3", {}, "Replay with a different output"));
+  if (!agent) {
+    wrap.append(el("p", { class: "note" },
+      "No replay agent is loaded for this run, so downstream steps cannot be recomputed. " +
+      "Start the engine with rootcast serve --agent your_agent.py."));
+  }
+  const values = (agent && agent.values) || [];
+  const picker = el("select", { "aria-label": "Value to inject" },
+    el("option", { value: "" }, "Custom JSON below"),
+    values.map((v) => el("option", { value: v }, "Named value: " + v)));
+  const current = outputOf(step, S.data.trace);
+  const area = el("textarea", { class: "mono", spellcheck: "false", "aria-label": "Output JSON to inject" },
+    JSON.stringify(current === undefined ? null : current, null, 2));
+  picker.addEventListener("change", () => { area.disabled = !!picker.value; });
+  const run = el("button", { class: "btn primary", type: "button" }, "Run replay");
+  run.addEventListener("click", async () => {
+    let value;
+    if (picker.value) value = picker.value;
+    else {
+      try { value = JSON.stringify(JSON.parse(area.value)); }
+      catch { toast("The output is not valid JSON"); return; }
+    }
+    const keep = S.replayError ? S.replayError.sets : S.sets;
+    const sets = keep.filter((s) => !s.startsWith(step.id + ".")).concat(step.id + ".output=" + value);
+    run.disabled = true;
+    run.textContent = "Replaying…";
+    await runReplay(sets);
+  });
+  wrap.append(
+    el("label", {}, "Value for " + step.id + ".output"), picker, el("label", {}, "JSON"), area,
+    el("div", { class: "row", style: "margin-top:10px" }, run,
+      S.replay ? el("button", { class: "btn", type: "button", onclick: resetReplay }, "Back to original") : null),
+  );
+  const pending = S.replayError ? S.replayError.sets : S.sets;
+  if (pending.length) {
+    wrap.append(el("div", { class: "pending" }, el("span", { class: "note" }, "Current injections:"),
+      pending.map((s) => el("code", {}, trim(s, 60)))));
+  }
+  if (S.replayError) {
+    const e = S.replayError;
+    const box = el("div", { class: "err" }, e.message);
+    if (e.external && e.external !== step.id) {
+      box.append(el("div", { style: "margin-top:6px" },
+        el("button", { class: "btn small", type: "button", onclick: () => select(e.external) },
+          "Set a result for " + e.external)));
+    }
+    wrap.append(box);
+  }
+  return wrap;
+}
+
+async function runReplay(sets) {
+  try {
+    const out = await api("/api/replay", { trace: S.data.trace, sets });
+    S.replay = out;
+    S.sets = sets;
+    S.replayError = null;
+    S.view = "replay";
+  } catch (err) {
+    const p = err.payload || {};
+    S.replayError = { message: err.message, external: p.external_step || null, sets };
+  }
+  render();
+}
+
+function resetReplay() {
+  S.replay = null;
+  S.sets = [];
+  S.replayError = null;
+  S.view = "original";
+  render();
+}
+
+function render() {
+  const toggle = $("view-toggle");
+  toggle.classList.toggle("hidden", !S.replay);
+  for (const b of toggle.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset.view === S.view));
+  renderBanner();
+  renderMap();
+  renderDetail();
+}
+
+// Wiring -------------------------------------------------------------------
+
+function wire() {
+  const pick = () => $("file").click();
+  $("open-btn").addEventListener("click", pick);
+  $("drop-open").addEventListener("click", pick);
+  $("file").addEventListener("change", (ev) => { if (ev.target.files[0]) readFile(ev.target.files[0]); ev.target.value = ""; });
+  $("banner-cause").addEventListener("click", () => { if (S.data.audit.cause) select(S.data.audit.cause); });
+  $("sample-select").addEventListener("change", (ev) => { if (ev.target.value) loadSample(ev.target.value); ev.target.value = ""; });
+  for (const b of $("view-toggle").querySelectorAll("button")) {
+    b.addEventListener("click", () => { S.view = b.dataset.view; render(); });
+  }
+  let depth = 0;
+  window.addEventListener("dragenter", (ev) => { ev.preventDefault(); depth++; document.body.classList.add("dragging"); });
+  window.addEventListener("dragleave", () => { if (--depth <= 0) { depth = 0; document.body.classList.remove("dragging"); } });
+  window.addEventListener("dragover", (ev) => ev.preventDefault());
+  window.addEventListener("drop", (ev) => {
+    ev.preventDefault();
+    depth = 0;
+    document.body.classList.remove("dragging");
+    const file = ev.dataTransfer.files[0];
+    if (file) readFile(file);
+  });
+}
+
+async function boot() {
+  wire();
+  try {
+    S.info = await api("/api/info");
+  } catch {
+    $("engine-note").textContent =
+      "The Rootcast engine is not reachable. Start it with: rootcast serve, then open the address it prints.";
+    $("drop-open").disabled = true;
+    return;
+  }
+  $("engine-note").textContent = "Engine rootcast " + S.info.version + " · " +
+    (S.info.agents.length ? S.info.agents.length + " replay agent(s) loaded" : "no replay agents loaded");
+  if (S.info.samples.length) {
+    const sel = $("sample-select");
+    sel.replaceChildren(el("option", { value: "" }, "Open a sample…"),
+      ...S.info.samples.map((s) => el("option", { value: s.name }, s.name + " (" + s.status + ")")));
+    sel.classList.remove("hidden");
+    $("drop-samples").replaceChildren(el("span", { class: "note" }, "or try a sample:"),
+      ...S.info.samples.map((s) => el("button", { class: "btn", type: "button", onclick: () => loadSample(s.name) }, s.name)));
+  }
+
+  // Deep links: ?sample=stale_policy&set=step2.output=policy_2026&step=step3
+  const q = new URLSearchParams(location.search);
+  if (q.get("sample") && await loadSample(q.get("sample"))) {
+    const sets = q.getAll("set");
+    if (sets.length) await runReplay(sets);
+    if (q.get("step") && stepById(q.get("step"))) select(q.get("step"));
+  }
+  document.body.dataset.ready = "true";
+}
+
+boot();
+</script>
+</body>
+</html>

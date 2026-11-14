@@ -98,6 +98,8 @@ replay refund-7af3  --set step2.output=policy_2026
 
 Same run. One tells you what happened. The other tells you what to fix, and proves it: the agent decided correctly, but the policy lookup handed it the 2024 policy for a 2026 order. Swap in the 2026 policy and only the steps downstream of the lookup change, the order read stays untouched, and the run flips from FAIL to PASS. Both commands run as is from a clone of this repo.
 
+Prefer pictures? `rootcast serve --open` opens the decision map in your browser: drop in a trace, the cause is highlighted, click it, pick a value and hit **Run replay** to watch the banner flip to PASS. See [docs/ui.md](./docs/ui.md).
+
 <br/>
 
 ## Quickstart
