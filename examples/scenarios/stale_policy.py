@@ -1,4 +1,4 @@
-from rootcast import Recorder, current_step
+from rootcast import Agent, Recorder, current_step
 
 RUN_ID = "refund-7af3"
 EXPECTED = {"fail": "step4", "cause": "step2"}
@@ -33,6 +33,21 @@ def build(rec: Recorder):
         return {"status": "issued" if decision["allowed"] else "denied", "order": order["id"]}
 
     return read_order, lookup_policy, decide_refund, issue_refund
+
+
+# Named values for rootcast replay --set, e.g. --set step2.output=policy_2026
+REPLAY_VALUES = {"policy_2026": dict(POLICIES[2026], query="refund window")}
+
+
+def replay_agent(rec: Recorder) -> Agent:
+    read_order, lookup_policy, decide_refund, issue_refund = build(rec)
+    agent = Agent()
+    agent.add(read_order)
+    agent.add(lookup_policy)
+    agent.add(decide_refund)
+    # Only the policy check runs here, no payment API is called, so it is safe to re run.
+    agent.add(issue_refund, external=False)
+    return agent
 
 
 def run(out_path, clock=None):

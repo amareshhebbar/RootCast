@@ -66,9 +66,37 @@ run refund-7af3  FAIL  refund issued outside the 30 day policy window
     step4  FAIL  step_error  refund issued outside the 30 day policy window
 ```
 
-Same run. One tells you what happened. The other tells you what to fix: the agent decided correctly, but the policy lookup handed it the 2024 policy for a 2026 order. Next, `rootcast replay` (v0.3) swaps in the 2026 policy and proves the run flips to PASS.
+That is the real output of `rootcast audit examples/traces/stale_policy.rootcast.json`. Then prove it:
 
-This is the real output of `rootcast audit examples/traces/stale_policy.rootcast.json`.
+```
+$ rootcast replay examples/traces/stale_policy.rootcast.json --agent examples/scenarios/stale_policy.py --set step2.output=policy_2026
+replay refund-7af3  --set step2.output=policy_2026
+
+  step1  read_order     unchanged   ok
+  step2  lookup_policy  injected    ok
+           output.source       "policy_2024" -> "policy_2026"
+           output.window_days  90 -> 30
+           output.year         2024 -> 2026
+  step3  decide_refund  recomputed  ok
+           inputs.policy.source       "policy_2024" -> "policy_2026"
+           inputs.policy.window_days  90 -> 30
+           inputs.policy.year         2024 -> 2026
+           output.allowed             true -> false
+           output.policy_source       "policy_2024" -> "policy_2026"
+           output.window_days         90 -> 30
+  step4  issue_refund   recomputed  FAIL -> ok
+           inputs.decision.allowed        true -> false
+           inputs.decision.policy_source  "policy_2024" -> "policy_2026"
+           inputs.decision.window_days    90 -> 30
+           output.status                  "issued" -> "denied"
+           output.violation               "outside_window" -> null
+
+  changed: step2, step3, step4
+  untouched: step1
+  run: FAIL -> PASS  (flipped)
+```
+
+Same run. One tells you what happened. The other tells you what to fix, and proves it: the agent decided correctly, but the policy lookup handed it the 2024 policy for a 2026 order. Swap in the 2026 policy and only the steps downstream of the lookup change, the order read stays untouched, and the run flips from FAIL to PASS. Both commands run as is from a clone of this repo.
 
 <br/>
 

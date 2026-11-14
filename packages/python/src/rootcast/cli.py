@@ -6,7 +6,8 @@ import os
 import sys
 
 from .causal import CAUSE, AuditResult, audit
-from .schema import TRACE_SUFFIX, Trace, validate
+from .replay import ReplayError, load_agent_module, parse_set, render_replay, replay
+from .schema import TRACE_SUFFIX, Trace, trace_path, validate
 from .scoring import Baseline
 
 STATUS_TAG = {"pass": "ok", "warn": "WARN", "fail": "FAIL", "unknown": "..", "cause": "CAUSE"}
@@ -120,8 +121,33 @@ def cmd_audit(args) -> int:
     return 0
 
 
+def _resolve_trace(ref: str) -> str:
+    """A trace file path, or a run id looked up in the trace store."""
+    if os.path.exists(ref):
+        return ref
+    path = trace_path(ref)
+    if os.path.exists(path):
+        return path
+    raise ReplayError("no trace file or stored run named " + ref)
+
+
 def cmd_replay(args) -> int:
-    print("replay: counterfactual engine arrives in v0.3")
+    try:
+        trace = Trace.load(_resolve_trace(args.run))
+        factory, named = None, {}
+        if args.agent:
+            module = load_agent_module(args.agent)
+            factory = module.replay_agent
+            named = getattr(module, "REPLAY_VALUES", {})
+        injections = [parse_set(spec, trace, named) for spec in args.set]
+        result = replay(trace, injections, factory)
+    except ReplayError as exc:
+        print("replay: " + str(exc), file=sys.stderr)
+        return 2
+    if args.json:
+        print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+    else:
+        print(render_replay(result))
     return 0
 
 
@@ -153,8 +179,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_audit.set_defaults(func=cmd_audit)
 
     p_replay = sub.add_parser("replay")
-    p_replay.add_argument("run_id")
-    p_replay.add_argument("--set", action="append", default=[])
+    p_replay.add_argument("run", help="trace file, or a run id in the trace store")
+    p_replay.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        metavar="STEP.output[.path]=VALUE",
+        help="value to inject; repeat for several. VALUE is JSON, a REPLAY_VALUES name, @file.json or text",
+    )
+    p_replay.add_argument("--agent", metavar="FILE.py", help="agent module defining replay_agent(rec)")
+    p_replay.add_argument("--json", action="store_true", help="print the replay result as JSON")
     p_replay.set_defaults(func=cmd_replay)
 
     return parser

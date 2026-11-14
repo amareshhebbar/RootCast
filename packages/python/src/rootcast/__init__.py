@@ -13,6 +13,7 @@ from .recorder import Recorder, StepHandle, current_step
 from .infer import infer_dependencies
 from .scoring import Baseline, Flag, Score, score_step, score_trace
 from .causal import AuditResult, DecisionGraph, audit
+from .replay import Agent, ExternalCallError, Injection, ReplayError, ReplayResult, StepDiff, parse_set, replay
 
 __all__ = [
     "Recorder",
@@ -35,6 +36,14 @@ __all__ = [
     "AuditResult",
     "DecisionGraph",
     "audit",
+    "Agent",
+    "ExternalCallError",
+    "Injection",
+    "ReplayError",
+    "ReplayResult",
+    "StepDiff",
+    "parse_set",
+    "replay",
     "ROOTCAST_VERSION",
 ]
 

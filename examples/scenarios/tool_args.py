@@ -1,4 +1,4 @@
-from rootcast import Recorder
+from rootcast import Agent, Recorder
 
 RUN_ID = "tool-58d2"
 EXPECTED = {"fail": "step4", "cause": "step3"}
@@ -24,6 +24,21 @@ def build(rec: Recorder):
         return {"status": "updated", "plan": args["plan"], "seats": args["seats"]}
 
     return read_ticket, lookup_account, plan_action, update_subscription
+
+
+# Named values for rootcast replay --set, e.g. --set step3.output=fixed_plan
+REPLAY_VALUES = {
+    "fixed_plan": {"tool": "update_subscription", "args": {"account": "acme-corp-eu", "plan": "pro", "seats": 25}},
+    "updated": {"status": "updated", "plan": "pro", "seats": 25},
+}
+
+
+def replay_agent(rec: Recorder) -> Agent:
+    agent = Agent()
+    # update_subscription is the billing API: an external call replay must not make.
+    for fn in build(rec):
+        agent.add(fn)
+    return agent
 
 
 def run(out_path, clock=None):
