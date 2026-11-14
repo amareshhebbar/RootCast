@@ -218,15 +218,19 @@ def make_handler(state: ServerState):
         def do_POST(self) -> None:
             url = urlparse(self.path)
             routes = {"/api/audit": api_audit, "/api/replay": api_replay}
+            length = int(self.headers.get("Content-Length") or 0)
+            if length > MAX_BODY:
+                self.close_connection = True
+                self._json(413, {"error": "trace too large"})
+                return
+            # Read the body before answering, even for an unknown route: replying with
+            # unread request bytes makes some clients (Windows) see a reset connection.
+            raw = self.rfile.read(length)
             if url.path not in routes:
                 self._json(404, {"error": "not found"})
                 return
-            length = int(self.headers.get("Content-Length") or 0)
-            if length > MAX_BODY:
-                self._json(413, {"error": "trace too large"})
-                return
             try:
-                body = json.loads(self.rfile.read(length) or b"{}")
+                body = json.loads(raw or b"{}")
             except ValueError:
                 self._json(400, {"error": "body is not JSON"})
                 return
