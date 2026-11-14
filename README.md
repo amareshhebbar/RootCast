@@ -110,17 +110,19 @@ import { Recorder } from "rootcast";
 
 const rec = new Recorder({ runId: "refund-7af3" });
 
-await rec.step("lookup_policy", { kind: "tool" }, async (s) => {
-  const policy = await searchPolicy("refund window");
-  s.input({ query: "refund window" });
-  s.output(policy);
-  return policy;
+// Wrap a function: arguments become inputs, the return value the output.
+const lookupPolicy = rec.record(searchPolicy, { kind: "tool" });
+const policy = await lookupPolicy("refund window");
+
+// Or record a block by hand.
+await rec.step("decide_refund", { kind: "decision" }, (s) => {
+  s.output(decide(order, policy));
 });
 
 rec.save("refund-7af3.rootcast.json");
 ```
 
-Both SDKs write the same trace file. One recorder format, any language, any framework.
+Both SDKs write the same trace file, byte for byte, with the same inferred dependencies. One recorder format, any language, any framework. File naming and the multi run store are in [docs/trace-files.md](./docs/trace-files.md).
 
 <br/>
 

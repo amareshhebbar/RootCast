@@ -1,0 +1,169 @@
+[
+  {
+    "name": "valid",
+    "trace": {
+      "rootcast_version": "0.1",
+      "run_id": "ok",
+      "status": "fail",
+      "steps": [
+        {
+          "id": "s1",
+          "name": "a",
+          "kind": "tool",
+          "output_ref": "sha256:abc"
+        },
+        {
+          "id": "s2",
+          "name": "b",
+          "kind": "llm",
+          "depends_on": [
+            "s1"
+          ],
+          "started_at": 1,
+          "ended_at": 2
+        }
+      ],
+      "blobs": {
+        "sha256:abc": {
+          "big": true
+        }
+      }
+    },
+    "errors": []
+  },
+  {
+    "name": "not an object",
+    "trace": [
+      1,
+      2
+    ],
+    "errors": [
+      "trace must be a JSON object"
+    ]
+  },
+  {
+    "name": "bad top level",
+    "trace": {
+      "rootcast_version": "0.2",
+      "run_id": "",
+      "status": "maybe",
+      "meta": [],
+      "steps": {}
+    },
+    "errors": [
+      "rootcast_version must be 0.1",
+      "run_id is required",
+      "status must be one of fail, pass, unknown",
+      "meta must be an object",
+      "steps must be an array"
+    ]
+  },
+  {
+    "name": "bad blobs",
+    "trace": {
+      "rootcast_version": "0.1",
+      "run_id": "r",
+      "status": "pass",
+      "blobs": [],
+      "steps": []
+    },
+    "errors": [
+      "blobs must be an object"
+    ]
+  },
+  {
+    "name": "bad steps",
+    "trace": {
+      "rootcast_version": "0.1",
+      "run_id": "r",
+      "status": "pass",
+      "blobs": {
+        "sha256:known": 1
+      },
+      "steps": [
+        "nope",
+        {
+          "id": "s1",
+          "name": "",
+          "kind": "robot",
+          "status": "great",
+          "inputs": [
+            1
+          ]
+        },
+        {
+          "id": "s1",
+          "name": "dup",
+          "kind": "tool",
+          "output": 1,
+          "output_ref": "sha256:known"
+        },
+        {
+          "id": "s3",
+          "name": "c",
+          "kind": "tool",
+          "output_ref": "md5:x"
+        },
+        {
+          "id": "s4",
+          "name": "d",
+          "kind": "tool",
+          "output_ref": "sha256:missing",
+          "error": 5
+        },
+        {
+          "id": "s5",
+          "name": "e",
+          "kind": "io",
+          "started_at": "now",
+          "ended_at": 1
+        },
+        {
+          "id": "s6",
+          "name": "f",
+          "kind": "io",
+          "started_at": 5,
+          "ended_at": 4
+        },
+        {
+          "id": "s7",
+          "name": "g",
+          "kind": "decision",
+          "depends_on": "s1"
+        },
+        {
+          "id": "s8",
+          "name": "h",
+          "kind": "custom",
+          "depends_on": [
+            "s8",
+            "s99",
+            "s1"
+          ]
+        },
+        {
+          "name": "no id",
+          "kind": "tool"
+        }
+      ]
+    },
+    "errors": [
+      "steps[0] must be an object",
+      "steps[1].name is required",
+      "steps[1].kind invalid",
+      "steps[1].status invalid",
+      "steps[1].inputs must be an object",
+      "steps[2].id is duplicated: s1",
+      "steps[2] has both output and output_ref",
+      "steps[3].output_ref must start with sha256:",
+      "steps[4].output_ref missing from blobs: sha256:missing",
+      "steps[4].error must be a string",
+      "steps[5].started_at must be a number",
+      "steps[6].ended_at is before started_at",
+      "steps[7].depends_on must be an array",
+      "steps[8].depends_on references itself",
+      "steps[8].depends_on unknown or later id: s99",
+      "steps[9].id is required"
+    ]
+  }
+]

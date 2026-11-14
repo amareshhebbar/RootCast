@@ -1,0 +1,3 @@
+# Trace files are byte compared across languages. Keep them LF everywhere.
+*.rootcast.json text eol=lf
+examples/conformance/*.json text eol=lf

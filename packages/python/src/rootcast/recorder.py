@@ -8,7 +8,7 @@ from contextvars import ContextVar
 from typing import Any, Callable, Iterable, Optional
 
 from .infer import infer_dependencies
-from .schema import INLINE_LIMIT_BYTES, Step, Trace, canonical_bytes, ref_of, snapshot
+from .schema import INLINE_LIMIT_BYTES, Step, Trace, canonical_bytes, format_error, ref_of, snapshot
 
 _CURRENT: ContextVar[Optional["StepHandle"]] = ContextVar("rootcast_current_step", default=None)
 
@@ -89,7 +89,7 @@ class Recorder:
     @staticmethod
     def _close_err(handle: StepHandle, exc: BaseException) -> None:
         handle._step.status = "fail"
-        handle._step.error = repr(exc)
+        handle._step.error = format_error(exc)
 
     @contextmanager
     def step(
@@ -185,6 +185,6 @@ class Recorder:
             self.trace.status = "fail" if any(s.status == "fail" for s in self.trace.steps) else "pass"
         return self.trace
 
-    def save(self, path: str) -> str:
+    def save(self, path: Optional[str] = None) -> str:
         self.finalize()
         return self.trace.save(path)
