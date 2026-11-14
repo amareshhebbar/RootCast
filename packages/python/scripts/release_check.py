@@ -174,6 +174,14 @@ def _venv_bin(env_dir: str, exe: str) -> str:
     return os.path.join(env_dir, sub, exe + suffix)
 
 
+# The known fix for each committed sample: replaying it must flip the run FAIL to PASS.
+SAMPLE_FIXES = {
+    "stale_policy": ["step2.output=policy_2026"],
+    "rag_lookup": ["step2.output=pediatric_docs"],
+    "tool_args": ["step3.output=fixed_plan", "step4.output=updated"],
+}
+
+
 def sample_traces() -> list[str]:
     return sorted(glob.glob(os.path.join(REPO_DIR, "examples", "traces", "*.rootcast.json")))
 
@@ -213,10 +221,21 @@ def check_fresh_install(wheel: str, version: str) -> None:
             view = run([cli, "view", trace], cwd=work)
             if "FAIL" not in view:
                 raise CheckFailed("view on " + label + " did not show the failing run")
-            run([cli, "audit", trace], cwd=work)
-            with open(trace, "r", encoding="utf-8") as fh:
-                run_id = json.load(fh)["run_id"]
-            run([cli, "replay", run_id, "--set", "step2.result=fixed"], cwd=work)
+            audit = run([cli, "audit", trace], cwd=work)
+            if "earliest divergence:" not in audit:
+                raise CheckFailed("audit on " + label + " named no cause")
+            name = label[: -len(".rootcast.json")]
+            if name in SAMPLE_FIXES:
+                agent = os.path.join(REPO_DIR, "examples", "scenarios", name + ".py")
+                args = [cli, "replay", trace, "--agent", agent]
+                for spec in SAMPLE_FIXES[name]:
+                    args += ["--set", spec]
+            else:
+                # Nothing downstream reads step2's output as input, so no agent is needed.
+                args = [cli, "replay", trace, "--set", 'step2.output={"source":"policy_2026","window_days":30}']
+            out = run(args, cwd=work)
+            if name in SAMPLE_FIXES and "run: FAIL -> PASS  (flipped)" not in out:
+                raise CheckFailed("replay of the known fix did not flip " + label + " to PASS")
             log("view, validate, audit, replay ran on " + label)
     finally:
         shutil.rmtree(work, ignore_errors=True)
