@@ -11,6 +11,8 @@ from .schema import (
 )
 from .recorder import Recorder, StepHandle, current_step
 from .infer import infer_dependencies
+from .scoring import Baseline, Flag, Score, score_step, score_trace
+from .causal import AuditResult, DecisionGraph, audit
 
 __all__ = [
     "Recorder",
@@ -25,6 +27,14 @@ __all__ = [
     "format_number",
     "trace_path",
     "infer_dependencies",
+    "Baseline",
+    "Flag",
+    "Score",
+    "score_step",
+    "score_trace",
+    "AuditResult",
+    "DecisionGraph",
+    "audit",
     "ROOTCAST_VERSION",
 ]
 

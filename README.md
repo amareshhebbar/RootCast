@@ -50,20 +50,25 @@ Today, when an agent fails, you read this:
 With Rootcast, you read this:
 
 ```
-run 7af3  FAIL  refund issued outside policy window
+run refund-7af3  FAIL  refund issued outside the 30 day policy window
 
-  step 1  read_order            ok
-  step 3  search(refund policy) WARN   returned the 2024 policy, order is 2026
-  step 5  decide refund window  CAUSE   concluded 90 days from the stale 2024 doc
-  step 6  issue_refund          FAIL    real window was 30 days
+  step1  read_order     ok
+  step2  lookup_policy  CAUSE  returned 2024 data, read_order is 2026
+  step3  decide_refund  ok
+  step4  issue_refund   FAIL   refund issued outside the 30 day policy window
 
-  earliest divergence: step 3
-  one line fix to verify: pin the policy lookup to the order year
+  earliest divergence: step2
+  chain: step2 -> step3 -> step4
+  cause: lookup_policy: returned 2024 data, read_order is 2026, and that fed issue_refund
 
-  rootcast replay 7af3 --set step3.result=policy_2026   ->  PASS
+  flags:
+    step2  WARN  stale       returned 2024 data, read_order is 2026
+    step4  FAIL  step_error  refund issued outside the 30 day policy window
 ```
 
-Same run. One tells you what happened. The other tells you what to fix.
+Same run. One tells you what happened. The other tells you what to fix: the agent decided correctly, but the policy lookup handed it the 2024 policy for a 2026 order. Next, `rootcast replay` (v0.3) swaps in the 2026 policy and proves the run flips to PASS.
+
+This is the real output of `rootcast audit examples/traces/stale_policy.rootcast.json`.
 
 <br/>
 
