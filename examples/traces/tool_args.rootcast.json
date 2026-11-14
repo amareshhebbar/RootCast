@@ -16,7 +16,7 @@
         "request": "upgrade to pro plan for 25 seats"
       },
       "status": "pass",
-      "started_at": 1767225600.0,
+      "started_at": 1767225600,
       "ended_at": 1767225600.25
     },
     {
@@ -67,7 +67,7 @@
         "step2"
       ],
       "status": "pass",
-      "started_at": 1767225601.0,
+      "started_at": 1767225601,
       "ended_at": 1767225601.25
     },
     {
@@ -85,7 +85,7 @@
         "step3"
       ],
       "status": "fail",
-      "error": "TypeError('seats must be an integer, got str')",
+      "error": "TypeError: seats must be an integer, got str",
       "started_at": 1767225601.5,
       "ended_at": 1767225601.75
     }

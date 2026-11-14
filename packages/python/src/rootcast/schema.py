@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import os
+import re
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -28,14 +31,117 @@ STEP_FIELD_ORDER = (
 )
 
 
+TRACE_SUFFIX = ".rootcast.json"
+DEFAULT_STORE = ".rootcast"
+STORE_ENV = "ROOTCAST_DIR"
+
+
+def format_number(value: float) -> str:
+    """Format a number exactly like ECMAScript Number.prototype.toString.
+
+    This is the cross language number format (RFC 8785 style). It is what
+    makes a Python float like 129.0 and a JS number 129 encode to the same
+    bytes. Non finite numbers have no JSON form and encode as null.
+    """
+    if isinstance(value, int):
+        return str(value)
+    if math.isnan(value) or math.isinf(value):
+        return "null"
+    if value == 0:
+        return "0"
+    sign = "-" if value < 0 else ""
+    mantissa, _, exp = repr(abs(value)).partition("e")
+    whole, _, frac = mantissa.partition(".")
+    digits = whole + frac
+    point = len(whole) + (int(exp) if exp else 0)
+    stripped = digits.lstrip("0")
+    point -= len(digits) - len(stripped)
+    digits = stripped.rstrip("0")
+    k, n = len(digits), point
+    if k <= n <= 21:
+        body = digits + "0" * (n - k)
+    elif 0 < n <= 21:
+        body = digits[:n] + "." + digits[n:]
+    elif -6 < n <= 0:
+        body = "0." + "0" * (-n) + digits
+    else:
+        e = n - 1
+        esign = "+" if e >= 0 else "-"
+        head = digits[0] + ("." + digits[1:] if k > 1 else "")
+        body = head + "e" + esign + str(abs(e))
+    return sign + body
+
+
+def _key(key: Any) -> str:
+    if isinstance(key, str):
+        return key
+    if key is None:
+        return "null"
+    if isinstance(key, bool):
+        return "true" if key else "false"
+    if isinstance(key, (int, float)):
+        return format_number(key)
+    return str(key)
+
+
+def encode(value: Any, indent: Optional[int] = None, sort_keys: bool = False, _depth: int = 0) -> str:
+    """Encode JSON with the cross language rules shared by every SDK.
+
+    indent None gives the compact form, an int gives the pretty file form
+    with ": " and one entry per line.
+    """
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return format_number(value)
+    if isinstance(value, str):
+        return json.dumps(value, ensure_ascii=False)
+    if isinstance(value, dict):
+        items = [(_key(k), v) for k, v in value.items()]
+        if sort_keys:
+            items.sort(key=lambda kv: kv[0])
+        parts = [json.dumps(k, ensure_ascii=False) + (":" if indent is None else ": ")
+                 + encode(v, indent, sort_keys, _depth + 1) for k, v in items]
+        return _wrap("{", "}", parts, indent, _depth)
+    if isinstance(value, (list, tuple)):
+        parts = [encode(v, indent, sort_keys, _depth + 1) for v in value]
+        return _wrap("[", "]", parts, indent, _depth)
+    return encode(str(value), indent, sort_keys, _depth)
+
+
+def _wrap(open_: str, close: str, parts: list, indent: Optional[int], depth: int) -> str:
+    if not parts:
+        return open_ + close
+    if indent is None:
+        return open_ + ",".join(parts) + close
+    inner = "\n" + " " * (indent * (depth + 1))
+    return open_ + inner + ("," + inner).join(parts) + "\n" + " " * (indent * depth) + close
+
+
 def canonical_bytes(payload: Any) -> bytes:
-    return json.dumps(
-        payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        default=str,
-    ).encode("utf-8")
+    return encode(payload, sort_keys=True).encode("utf-8")
+
+
+def format_error(exc: BaseException) -> str:
+    """Error text shared by every SDK: "Name: message", or "Name" alone."""
+    message = str(exc)
+    name = type(exc).__name__
+    return name + ": " + message if message else name
+
+
+def safe_run_id(run_id: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._-]", "_", run_id) or "_"
+
+
+def store_root(root: Optional[str] = None) -> str:
+    return root or os.environ.get(STORE_ENV) or DEFAULT_STORE
+
+
+def trace_path(run_id: str, root: Optional[str] = None) -> str:
+    """Conventional path of a run inside a trace store: <root>/runs/<run_id>.rootcast.json."""
+    return os.path.join(store_root(root), "runs", safe_run_id(run_id) + TRACE_SUFFIX)
 
 
 def ref_of(payload: Any) -> str:
@@ -103,7 +209,7 @@ class Trace:
         return out
 
     def to_json(self, indent: int = 2) -> str:
-        return json.dumps(self.to_dict(), indent=indent, ensure_ascii=False, default=str) + "\n"
+        return encode(self.to_dict(), indent=indent) + "\n"
 
     @classmethod
     def from_dict(cls, data: dict) -> "Trace":
@@ -136,8 +242,12 @@ class Trace:
         with open(path, "r", encoding="utf-8") as fh:
             return cls.from_dict(json.load(fh))
 
-    def save(self, path: str) -> str:
-        with open(path, "w", encoding="utf-8") as fh:
+    def save(self, path: Optional[str] = None) -> str:
+        path = path or trace_path(self.run_id)
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="") as fh:
             fh.write(self.to_json())
         return path
 

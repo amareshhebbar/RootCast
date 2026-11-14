@@ -1,0 +1,87 @@
+name: release-node
+
+# Publishes packages/node to npm. A real publish only happens on a pushed tag
+# node-v<version> (for example node-v0.1.0) and waits for approval on the
+# "npm" environment. Running it by hand is a dry run: check and pack only.
+# Python releases use v* tags in release.yml, so the two never collide.
+
+on:
+  push:
+    tags:
+      - "node-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/node
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ../python
+      - id: version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "node-v$version" ]; then
+            echo "tag ${GITHUB_REF_NAME} does not match package.json version $version (want node-v$version)"
+            exit 1
+          fi
+      - run: npm install --no-audit --no-fund
+      - run: node scripts/release_check.mjs
+
+  publish:
+    needs: check
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write # npm provenance
+    defaults:
+      run:
+        working-directory: packages/node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm install --no-audit --no-fund
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  verify:
+    # Phase 5 gate: a fresh project installs the published package and records a trace.
+    needs: [check, publish]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install --no-audit --no-fund
+      - name: wait for the registry
+        run: |
+          for i in $(seq 1 20); do
+            npm view "rootcast@${{ needs.check.outputs.version }}" version && exit 0
+            sleep 15
+          done
+          exit 1
+      - run: node scripts/release_check.mjs --from-registry

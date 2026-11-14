@@ -47,4 +47,35 @@ jobs:
         with:
           node-version: "20"
       - run: npm install
-      - run: npm run build
+      - run: npm test
+
+  crosslang:
+    # Phase 1 gate: Node writes traces, Python loads, validates and byte compares them.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: npm install && npm run build
+        working-directory: packages/node
+      - run: pip install -e packages/python pytest
+      - run: pytest -q packages/python/tests/test_crosslang.py packages/python/tests/test_conformance.py
+        env:
+          ROOTCAST_REQUIRE_NODE: "1"
+
+  ui:
+    # Phase 4 gate: the real UI in headless Chrome renders the cause and replay flips the banner.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e packages/python pytest
+      - run: pytest -q packages/python/tests/test_serve.py
+        env:
+          ROOTCAST_REQUIRE_BROWSER: "1"

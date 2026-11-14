@@ -50,20 +50,55 @@ Today, when an agent fails, you read this:
 With Rootcast, you read this:
 
 ```
-run 7af3  FAIL  refund issued outside policy window
+run refund-7af3  FAIL  refund issued outside the 30 day policy window
 
-  step 1  read_order            ok
-  step 3  search(refund policy) WARN   returned the 2024 policy, order is 2026
-  step 5  decide refund window  CAUSE   concluded 90 days from the stale 2024 doc
-  step 6  issue_refund          FAIL    real window was 30 days
+  step1  read_order     ok
+  step2  lookup_policy  CAUSE  returned 2024 data, read_order is 2026
+  step3  decide_refund  ok
+  step4  issue_refund   FAIL   refund issued outside the 30 day policy window
 
-  earliest divergence: step 3
-  one line fix to verify: pin the policy lookup to the order year
+  earliest divergence: step2
+  chain: step2 -> step3 -> step4
+  cause: lookup_policy: returned 2024 data, read_order is 2026, and that fed issue_refund
 
-  rootcast replay 7af3 --set step3.result=policy_2026   ->  PASS
+  flags:
+    step2  WARN  stale       returned 2024 data, read_order is 2026
+    step4  FAIL  step_error  refund issued outside the 30 day policy window
 ```
 
-Same run. One tells you what happened. The other tells you what to fix.
+That is the real output of `rootcast audit examples/traces/stale_policy.rootcast.json`. Then prove it:
+
+```
+$ rootcast replay examples/traces/stale_policy.rootcast.json --agent examples/scenarios/stale_policy.py --set step2.output=policy_2026
+replay refund-7af3  --set step2.output=policy_2026
+
+  step1  read_order     unchanged   ok
+  step2  lookup_policy  injected    ok
+           output.source       "policy_2024" -> "policy_2026"
+           output.window_days  90 -> 30
+           output.year         2024 -> 2026
+  step3  decide_refund  recomputed  ok
+           inputs.policy.source       "policy_2024" -> "policy_2026"
+           inputs.policy.window_days  90 -> 30
+           inputs.policy.year         2024 -> 2026
+           output.allowed             true -> false
+           output.policy_source       "policy_2024" -> "policy_2026"
+           output.window_days         90 -> 30
+  step4  issue_refund   recomputed  FAIL -> ok
+           inputs.decision.allowed        true -> false
+           inputs.decision.policy_source  "policy_2024" -> "policy_2026"
+           inputs.decision.window_days    90 -> 30
+           output.status                  "issued" -> "denied"
+           output.violation               "outside_window" -> null
+
+  changed: step2, step3, step4
+  untouched: step1
+  run: FAIL -> PASS  (flipped)
+```
+
+Same run. One tells you what happened. The other tells you what to fix, and proves it: the agent decided correctly, but the policy lookup handed it the 2024 policy for a 2026 order. Swap in the 2026 policy and only the steps downstream of the lookup change, the order read stays untouched, and the run flips from FAIL to PASS. Both commands run as is from a clone of this repo.
+
+Prefer pictures? `rootcast serve --open` opens the decision map in your browser: drop in a trace, the cause is highlighted, click it, pick a value and hit **Run replay** to watch the banner flip to PASS. See [docs/ui.md](./docs/ui.md).
 
 <br/>
 
@@ -110,17 +145,19 @@ import { Recorder } from "rootcast";
 
 const rec = new Recorder({ runId: "refund-7af3" });
 
-await rec.step("lookup_policy", { kind: "tool" }, async (s) => {
-  const policy = await searchPolicy("refund window");
-  s.input({ query: "refund window" });
-  s.output(policy);
-  return policy;
+// Wrap a function: arguments become inputs, the return value the output.
+const lookupPolicy = rec.record(searchPolicy, { kind: "tool" });
+const policy = await lookupPolicy("refund window");
+
+// Or record a block by hand.
+await rec.step("decide_refund", { kind: "decision" }, (s) => {
+  s.output(decide(order, policy));
 });
 
 rec.save("refund-7af3.rootcast.json");
 ```
 
-Both SDKs write the same trace file. One recorder format, any language, any framework.
+Both SDKs write the same trace file, byte for byte, with the same inferred dependencies. One recorder format, any language, any framework. File naming and the multi run store are in [docs/trace-files.md](./docs/trace-files.md).
 
 <br/>
 

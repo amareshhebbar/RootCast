@@ -1,4 +1,7 @@
-# Rootcast trace schema
+---
+title: "Trace schema"
+description: "The Rootcast trace format v0.1: fields, validation rules and the canonical encoding every SDK shares."
+---
 
 Version 0.1 (frozen)
 
@@ -53,10 +56,13 @@ Every SDK must produce identical bytes for the same logical payload. This is wha
 
 Canonical JSON, used for hashing and for the inline size check:
 
-1. Object keys sorted by Unicode code point, at every depth.
+1. Object keys sorted by Unicode code point, at every depth (not by UTF 16 unit).
 2. No whitespace. Separators are `,` and `:`.
-3. Non ASCII characters written as UTF 8, not escaped.
-4. Hash is `sha256:` followed by the lowercase hex sha256 of the canonical UTF 8 bytes.
+3. Non ASCII characters written as UTF 8, not escaped. Strings escape `"`, `\`, and control characters below U+0020 the way JSON.stringify does (`\n`, `\t`, `\b`, `\f`, `\r`, otherwise `\u00xx` lowercase).
+4. Numbers are written as ECMAScript `Number.prototype.toString` writes them, as in RFC 8785. A float with no fraction has no `.0` (`129.0` is `129`), exponents look like `1e-7` and `1e+21`, and NaN and infinities are `null`. JSON has one number type, so `129` and `129.0` are the same value and must be the same bytes.
+5. Hash is `sha256:` followed by the lowercase hex sha256 of the canonical UTF 8 bytes.
+
+The same number and string rules apply to the trace file itself. Shared test vectors for all of this live in `examples/conformance`.
 
 Inline limit: if the canonical bytes of an output are longer than 2048 bytes, the step stores `output_ref` and the payload goes in `blobs` under that ref. Otherwise the output is inline.
 
@@ -64,7 +70,13 @@ Recorded values are snapshots taken at record time. A later mutation in the agen
 
 ## File layout
 
-Trace files are written with two space indentation and a trailing newline. Top level keys appear in this order: rootcast_version, run_id, status, steps, meta, blobs. Step keys appear in this order: id, name, kind, inputs, output, output_ref, depends_on, status, error, started_at, ended_at. Fields that are null or an empty `depends_on` array are omitted.
+Trace files are written as UTF 8 with two space indentation, `": "` after keys, LF line endings and a trailing newline. Recorded payloads (`inputs`, `output`, blob values) have their keys in canonical order. Top level keys appear in this order: rootcast_version, run_id, status, steps, meta, blobs. Step keys appear in this order: id, name, kind, inputs, output, output_ref, depends_on, status, error, started_at, ended_at. Fields that are null or an empty array are omitted.
+
+Naming, blob placement and the multi run store are in [trace-files.md](./trace-files.md).
+
+## Error text
+
+When a step raises, recorders set `status` to `fail` and `error` to the exception class name, a colon, a space and the message, for example `TypeError: seats must be an integer, got str`. With an empty message the error is the class name alone. Text set explicitly by the agent is stored as given.
 
 ## Dependency semantics
 
@@ -72,7 +84,7 @@ Trace files are written with two space indentation and a trailing newline. Top l
 
 ## Dependency inference
 
-When a framework does not declare dependencies, Rootcast infers them from data flow. The Python recorder runs inference on save. It can also be run on any trace with `rootcast infer`.
+When a framework does not declare dependencies, Rootcast infers them from data flow. The Python and Node recorders run the same inference on save (`infer_dependencies` and `inferDependencies`), so they produce the same edges. Strings are measured in Unicode code points.
 
 For each step with no declared `depends_on`, in file order:
 
