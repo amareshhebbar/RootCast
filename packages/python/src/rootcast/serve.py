@@ -1,21 +1,3 @@
-"""rootcast serve: the local backend the web UI talks to.
-
-One engine, two front doors. The UI never reimplements scoring, audit or
-replay: it posts the trace here and this module calls the very same audit()
-and replay() functions the CLI uses.
-
-Endpoints (JSON):
-
-  GET  /                  the UI (ui/index.html)
-  GET  /api/info          version, sample traces, loaded replay agents
-  GET  /api/sample?name=  one sample trace
-  POST /api/audit         {"trace": {...}}                  -> audit, graph edges, matched agent
-  POST /api/replay        {"trace": {...}, "sets": ["step2.output=..."]}
-                                                            -> replay result and audit of the replayed run
-
-Binds to 127.0.0.1 only. Agent modules are Python files you chose to load
-with --agent (or the repo's own examples), never anything sent by the page.
-"""
 from __future__ import annotations
 
 import json
@@ -28,7 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Optional
 from urllib.parse import parse_qs, urlparse
 
-from . import __version__
+from . import __version__, bundle
 from .causal import audit
 from .recorder import Recorder
 from .replay import Agent, ExternalCallError, ReplayError, load_agent_module, parse_set, replay
@@ -42,11 +24,10 @@ _REPO = os.path.abspath(os.path.join(_HERE, "..", "..", "..", ".."))
 
 
 def find_ui() -> Optional[str]:
-    """The UI file: bundled in the package, else ui/ in a source checkout."""
-    for path in (os.path.join(_HERE, "ui", "index.html"), os.path.join(_REPO, "ui", "index.html")):
-        if os.path.exists(path):
-            return path
-    return None
+    repo_ui = os.path.join(_REPO, "ui", "index.html")
+    if os.path.exists(repo_ui):
+        return repo_ui
+    return bundle.ui_path()
 
 
 @dataclass
@@ -74,7 +55,6 @@ class ServerState:
     ui_path: Optional[str] = None
 
     def match_agent(self, trace: Trace) -> Optional[LoadedAgent]:
-        """The loaded agent that registers the most of this trace's step names."""
         names = {s.name for s in trace.steps}
         best, best_hits = None, 0
         for agent in self.agents:
@@ -95,9 +75,6 @@ def default_state(trace_dirs: list[str], agent_paths: list[str]) -> ServerState:
     for path in agent_paths:
         state.agents.append(load_agent(path))
     return state
-
-
-# API ---------------------------------------------------------------------
 
 
 class ApiError(Exception):
@@ -170,14 +147,11 @@ def api_replay(state: ServerState, body: dict) -> dict:
     return {"result": result.to_dict(), "audit": audit(result.replayed).to_dict()}
 
 
-# HTTP --------------------------------------------------------------------
-
-
 def make_handler(state: ServerState):
     class Handler(BaseHTTPRequestHandler):
         server_version = "rootcast/" + __version__
 
-        def log_message(self, fmt, *args):  # keep the terminal quiet
+        def log_message(self, fmt, *args):
             pass
 
         def _send(self, status: int, body: bytes, content_type: str) -> None:
@@ -196,7 +170,7 @@ def make_handler(state: ServerState):
                 self._json(200, fn())
             except ApiError as exc:
                 self._json(exc.status, exc.payload)
-            except Exception as exc:  # surface engine bugs to the page instead of a dead socket
+            except Exception as exc:
                 self._json(500, {"error": type(exc).__name__ + ": " + str(exc)})
 
         def do_GET(self) -> None:
@@ -223,8 +197,6 @@ def make_handler(state: ServerState):
                 self.close_connection = True
                 self._json(413, {"error": "trace too large"})
                 return
-            # Read the body before answering, even for an unknown route: replying with
-            # unread request bytes makes some clients (Windows) see a reset connection.
             raw = self.rfile.read(length)
             if url.path not in routes:
                 self._json(404, {"error": "not found"})
@@ -253,7 +225,6 @@ def start_in_thread(state: ServerState, port: int = 0) -> ThreadingHTTPServer:
 
 
 def default_dirs() -> tuple[list[str], list[str]]:
-    """The repo's sample traces and scenario agents, when running from a checkout."""
     traces, agents = [], []
     for root in (os.getcwd(), _REPO):
         t = os.path.join(root, "examples", "traces")
@@ -264,6 +235,10 @@ def default_dirs() -> tuple[list[str], list[str]]:
             agents = [
                 os.path.join(a, n) for n in sorted(os.listdir(a)) if n.endswith(".py") and not n.startswith("_")
             ]
+    if not traces and bundle.trace_paths():
+        traces.append(bundle.TRACES_DIR)
+    if not agents:
+        agents = bundle.agent_paths()
     return traces, agents
 
 

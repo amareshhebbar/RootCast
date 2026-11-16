@@ -50,6 +50,7 @@ path = "src/rootcast/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/rootcast"]
+artifacts = ["src/rootcast/bundle/traces/*.rootcast.json"]
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -60,6 +61,7 @@ include = [
     "LICENSE",
     "pyproject.toml",
 ]
+artifacts = ["src/rootcast/bundle/traces/*.rootcast.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
