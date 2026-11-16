@@ -94,6 +94,8 @@ Output already present:
 
 ## Phase 1  Capture layer and schema lock
 
+Status: done.
+
 Goal: finalize the trace schema and make capture effortless from any agent, so real traces exist to build the engine on.
 
 ### Amaresh
@@ -121,6 +123,8 @@ Phase 1 done when: the same agent scenario recorded in both languages produces t
 ---
 
 ## Phase 2  Causal engine
+
+Status: done.
 
 Goal: turn a trace into an answer. Build the decision graph, find the earliest divergence, score each step, tag the cause.
 
@@ -150,6 +154,8 @@ Phase 2 done when: rootcast audit on the stale policy sample prints exactly the 
 
 ## Phase 3  Replay engine
 
+Status: done.
+
 Goal: prove the cause. Re run a trace with one value changed and report whether the outcome flips.
 
 ### Amaresh
@@ -178,6 +184,8 @@ Phase 3 done when: the README replay line is real and reproducible from the comm
 
 ## Phase 4  Web UI
 
+Status: done.
+
 Goal: the thing judges and users look at. A decision map that makes the cause obvious, with click to replay.
 
 ### Ashutosh
@@ -205,6 +213,8 @@ Phase 4 done when: a person who has never seen Rootcast can load a failed run an
 
 ## Phase 5  Package and release
 
+Status: code done, both packages pass their release checks at v0.2.0. Publishing and the demo recording remain.
+
 Goal: ship. Publish both packages, document, and record the demo.
 
 ### Amaresh
@@ -224,8 +234,8 @@ Goal: ship. Publish both packages, document, and record the demo.
   * Finalize package.json, build to dist, verify types ship.
   * npm pack and inspect the tarball, then npm publish.
   * Confirm the final name is free on npm on release day before publish.
-  * Set up the docs site (Mintlify, served on Netlify) from docs and the README.
-* Required output: npm install rootcast works and imports clean in a fresh project. Docs site live.
+  * Documentation lives in the README and the docs folder as plain markdown, no hosted docs site for v0.2.0.
+* Required output: npm install rootcast works and imports clean in a fresh project. Docs readable from the README.
 * Test gate: fresh project installs from the published tarball and records a trace.
 
 ### Both
@@ -233,8 +243,8 @@ Goal: ship. Publish both packages, document, and record the demo.
 * Branch: chore/launch
 * Tasks:
   * Record the demo: take the stale policy failure, show the wall of logs, then Rootcast finding the cause and proving the fix.
-  * Final README polish. Tag v0.1.0 on main.
-* Required output: tagged release, demo recorded, both packages live, docs up.
+  * Final README polish. Tag v0.2.0 and node-v0.2.0 on main.
+* Required output: tagged release, demo recorded, both packages live, docs linked from the README.
 
 Phase 5 done when: both packages are installable from their public registries and the demo reproduces end to end.
 
@@ -248,4 +258,4 @@ How to test as you go: every phase ships with a test gate above. The three sampl
 
 How to bridge milestones: Phase N output is Phase N plus one input. Capture feeds the engine. The engine feeds replay. Replay feeds the UI. Keep the trace schema the single contract so the two of you can work in parallel without blocking.
 
-How to conclude: when Phase 5 gates pass, tag v0.1.0, publish both packages, and the four line audit in the README is a real command anyone can run. After release, the roadmap continues with more framework adapters and live streaming capture, opened to outside contributors.
+How to conclude: when Phase 5 gates pass, tag v0.2.0, publish both packages, and the four line audit in the README is a real command anyone can run. After release, the roadmap continues with more framework adapters and live streaming capture, opened to outside contributors.
