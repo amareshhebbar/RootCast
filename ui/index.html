@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rootcast</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%237c3aed%27/%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%276%27 fill=%27white%27/%3E%3C/svg%3E">
 <style>
 :root {
   --bg: #f6f7f9;
@@ -85,7 +86,6 @@ header {
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 main { padding: 16px 20px 32px; max-width: 1400px; margin: 0 auto; }
 
-/* Empty state */
 #drop {
   border: 2px dashed var(--line); border-radius: 14px; padding: 56px 20px; text-align: center;
   background: var(--panel); margin-top: 24px;
@@ -95,7 +95,6 @@ main { padding: 16px 20px 32px; max-width: 1400px; margin: 0 auto; }
 #drop .samples { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
 body.dragging #drop, body.dragging .map-wrap { border-color: var(--inject); }
 
-/* Banner */
 #banner {
   display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
   border-radius: 14px; padding: 16px 18px; margin-bottom: 14px;
@@ -119,7 +118,6 @@ body.dragging #drop, body.dragging .map-wrap { border-color: var(--inject); }
 #banner .sub { color: var(--muted); margin-top: 2px; }
 #banner .sub b { color: var(--ink); }
 
-/* Layout */
 .grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 14px; align-items: start; }
 @media (max-width: 980px) { .grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 600px) {
@@ -133,7 +131,6 @@ body.dragging #drop, body.dragging .map-wrap { border-color: var(--inject); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 #map svg { display: block; width: 100%; height: auto; }
 
-/* Nodes */
 .node { cursor: pointer; outline: none; }
 .node rect.box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
 .node .t-id { fill: var(--muted); font-size: 11.5px; }
@@ -167,7 +164,6 @@ body.dragging #drop, body.dragging .map-wrap { border-color: var(--inject); }
 #arrow path { fill: var(--edge); }
 #arrow-chain path { fill: var(--chain); }
 
-/* Detail */
 #detail { padding: 16px; }
 #detail h2 { font-size: 16px; margin: 0; }
 #detail h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); margin: 18px 0 6px; }
@@ -198,7 +194,6 @@ table.diff td:first-child { width: 46%; }
 table.diff td.before { color: var(--fail); text-decoration: line-through; }
 table.diff td.after { color: var(--pass); }
 
-/* Replay panel */
 .replay { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 4px; }
 .replay textarea {
   width: 100%; min-height: 110px; resize: vertical; padding: 8px; border-radius: 8px;
@@ -270,19 +265,18 @@ table.diff td.after { color: var(--pass); }
 </main>
 <div id="toast" role="alert"></div>
 
-<script>
-"use strict";
+<script>"use strict";
 
 const NODE_W = 210, NODE_H = 76, GAP_X = 84, GAP_Y = 30, PAD = 22, TOP = 26;
 const TAG_TEXT = { pass: "ok", warn: "WARN", fail: "FAIL", cause: "CAUSE", unknown: ".." };
 const SVG = "http://www.w3.org/2000/svg";
 
 const S = {
-  info: null,       // /api/info
-  label: "",        // file or sample name
-  data: null,       // /api/audit response for the original run
-  replay: null,     // /api/replay response
-  sets: [],         // injections of the last successful replay
+  info: null,
+  label: "",
+  data: null,
+  replay: null,
+  sets: [],
   view: "original",
   selected: null,
   replayError: null,
@@ -343,8 +337,6 @@ async function api(path, body) {
   return data;
 }
 
-// Loading ----------------------------------------------------------------
-
 async function loadTrace(trace, label) {
   try {
     S.data = await api("/api/audit", { trace });
@@ -386,8 +378,6 @@ function readFile(file) {
   reader.readAsText(file);
 }
 
-// Model helpers -----------------------------------------------------------
-
 function steps() { return S.data.trace.steps; }
 function stepById(id) { return steps().find((s) => s.id === id); }
 function auditStep(id, audit) { return (audit || S.data.audit).steps.find((s) => s.step_id === id); }
@@ -403,8 +393,6 @@ function tagFor(id) {
   if (showingReplay()) return auditStep(id, S.replay.audit).tag;
   return auditStep(id).tag;
 }
-
-// Banner -------------------------------------------------------------------
 
 function renderBanner() {
   const banner = $("banner"), pill = $("banner-pill");
@@ -457,8 +445,6 @@ function renderBanner() {
     causeBtn.classList.add("hidden");
   }
 }
-
-// Map ----------------------------------------------------------------------
 
 function layout() {
   const depth = {}, pos = {};
@@ -552,8 +538,6 @@ function renderMap() {
   $("map").replaceChildren(root);
 }
 
-// Detail and replay panel ---------------------------------------------------
-
 function jsonBlock(value) {
   return el("pre", { class: "json" }, value === undefined ? "nothing" : JSON.stringify(value, null, 2));
 }
@@ -592,7 +576,6 @@ function renderDetail() {
       el("span", { class: "note mono" }, step.id)),
   ];
 
-  // Why it was scored this way.
   parts.push(el("h3", {}, "Why this score"));
   if (!showingReplay() && id === audit.cause && audit.cause !== audit.failure) {
     parts.push(el("p", {}, el("b", {}, "Root cause. "),
@@ -726,8 +709,6 @@ function render() {
   renderDetail();
 }
 
-// Wiring -------------------------------------------------------------------
-
 function wire() {
   const pick = () => $("file").click();
   $("open-btn").addEventListener("click", pick);
@@ -772,7 +753,6 @@ async function boot() {
       ...S.info.samples.map((s) => el("button", { class: "btn", type: "button", onclick: () => loadSample(s.name) }, s.name)));
   }
 
-  // Deep links: ?sample=stale_policy&set=step2.output=policy_2026&step=step3
   const q = new URLSearchParams(location.search);
   if (q.get("sample") && await loadSample(q.get("sample"))) {
     const sets = q.getAll("set");
