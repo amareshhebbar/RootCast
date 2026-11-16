@@ -29,38 +29,33 @@ export interface StepOptions {
 }
 
 export interface RecordOptions {
-  /** Step name. Defaults to the function name. */
+
   name?: string;
   kind?: StepKind;
   dependsOn?: string[];
-  /** Record call arguments as inputs. Default true. */
+
   captureInputs?: boolean;
-  /**
-   * Parameter names for the inputs object. By default they are read from the
-   * function source, which minifiers can rename, so pass them for bundled code.
-   */
+
   params?: string[];
-  /** Parameter names to leave out of inputs. */
+
   exclude?: string[];
 }
 
 export interface RecorderOptions {
   runId: string;
   meta?: Record<string, unknown>;
-  /** Returns unix seconds. Defaults to Date.now() / 1000. */
+
   clock?: () => number;
-  /** Infer depends_on from data flow when the trace is finalized. Default true. */
+
   infer?: boolean;
 }
 
 const CURRENT = new AsyncLocalStorage<StepHandle>();
 
-/** The step running in the current async context, if any. */
 export function currentStep(): StepHandle | undefined {
   return CURRENT.getStore();
 }
 
-/** Error text shared by every SDK: "Name: message", or "Name" alone. */
 export function formatError(err: unknown): string {
   if (err instanceof Error) {
     return err.message ? err.name + ": " + err.message : err.name;
@@ -140,10 +135,6 @@ export class Recorder {
     };
   }
 
-  /**
-   * Run body as one step. Sync bodies stay sync and async bodies return a
-   * promise, so wrapped functions keep their original calling convention.
-   */
   private run<T>(name: string, opts: StepOptions, body: (handle: StepHandle) => T): T {
     const handle = this.open(name, opts);
     const step = this.steps[this.steps.length - 1];
@@ -179,7 +170,6 @@ export class Recorder {
     return result;
   }
 
-  /** Record one step around a callback. The callback's return value is passed through. */
   async step<T>(name: string, opts: StepOptions, fn: (handle: StepHandle) => Promise<T> | T): Promise<T>;
   async step<T>(name: string, fn: (handle: StepHandle) => Promise<T> | T): Promise<T>;
   async step<T>(
@@ -192,11 +182,6 @@ export class Recorder {
     return await this.run(name, opts, fn);
   }
 
-  /**
-   * Wrap a function so every call is recorded as a step, with its arguments
-   * as inputs and its return value as output. The JS form of the Python
-   * @rec.record decorator. Sync functions stay sync, async stay async.
-   */
   record<F extends (...args: any[]) => any>(fn: F, opts: RecordOptions = {}): F {
     const label = opts.name || fn.name || "anonymous";
     const signature = opts.params ? { params: opts.params.map((name) => ({ name })) } : parseParams(fn);
@@ -225,7 +210,6 @@ export class Recorder {
     this.runStatus = status;
   }
 
-  /** Run dependency inference now. Returns the edges that were added. */
   infer(): Record<string, string[]> {
     return inferDependencies(this.raw());
   }
@@ -241,7 +225,6 @@ export class Recorder {
     };
   }
 
-  /** The trace as plain data. Runs inference if enabled and derives the run status. */
   toData(): TraceData {
     if (this.inferOnFinalize) {
       const raw = this.raw();
@@ -262,15 +245,10 @@ export class Recorder {
     return data;
   }
 
-  /** The trace file text, byte identical to what the Python SDK writes. */
   toJSONString(): string {
     return traceToJson(this.toData());
   }
 
-  /**
-   * Write the trace. With no path it goes to the trace store,
-   * <ROOTCAST_DIR or .rootcast>/runs/<run_id>.rootcast.json.
-   */
   save(path?: string): string {
     const target = path || tracePath(this.runId);
     writeTraceFile(target, this.toJSONString());
@@ -309,7 +287,6 @@ function bindArgs(sig: Signature | null, args: unknown[], excluded: Set<string>)
 
 const IDENT = /^[A-Za-z_$][\w$]*$/;
 
-/** Read parameter names, plain literal defaults and rest params from a function's source. */
 export function parseParams(fn: Function): Signature | null {
   const src = Function.prototype.toString.call(fn).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
   const arrow = /^(?:async\s+)?([A-Za-z_$][\w$]*)\s*=>/.exec(src);
@@ -364,7 +341,7 @@ export function parseParams(fn: Function): Signature | null {
       try {
         param.default = { value: JSON.parse(part.slice(eq + 1).trim()) };
       } catch {
-        // Non literal default: it cannot be read without calling the function.
+
       }
     }
     params.push(param);

@@ -1,11 +1,3 @@
-"""Phase 1 gate, Python half: a Node recorder writes traces, Python loads them,
-validates them clean, checks the dependencies, and finds them byte identical
-to what the Python recorder writes for the same scenario.
-
-Needs node and a built Node SDK (npm --prefix packages/node run build).
-Skips when either is missing, unless ROOTCAST_REQUIRE_NODE=1 (set in CI),
-in which case it fails instead.
-"""
 import json
 import os
 import shutil

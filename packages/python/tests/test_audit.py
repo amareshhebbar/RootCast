@@ -1,4 +1,3 @@
-"""Causal audit on the samples and the Phase 2 gate on the README."""
 import json
 import os
 import re
@@ -109,12 +108,10 @@ def test_audit_baseline_flags_anomalies(tmp_path, capsys):
     out = capsys.readouterr().out
     assert "step2  info  slow" in out and "took 3s, usual for lookup_policy is 0.2s" in out
     assert "step2  info  small_result" in out
-    # The audited run itself is excluded from its own baseline, and anomalies do not change tags.
     assert "step2  lookup_policy  CAUSE" in out
 
 
 def test_readme_shows_the_real_stale_policy_audit(capsys):
-    """Phase 2 gate: the README block is exactly what rootcast audit prints."""
     with open(os.path.join(ROOT, "README.md"), "r", encoding="utf-8") as fh:
         readme = fh.read()
     match = re.search(r"With Rootcast, you read this:\s*```\n(.*?)\n```", readme, re.S)

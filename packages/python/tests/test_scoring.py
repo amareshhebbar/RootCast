@@ -1,4 +1,3 @@
-"""Unit tests, one block per scoring rule."""
 import os
 
 import pytest
@@ -35,15 +34,9 @@ def _score(step, trace=None):
     return score_step(trace.steps[-1], trace)
 
 
-# Clean steps ---------------------------------------------------------------
-
-
 def test_clean_step_passes_with_no_flags():
     s = _score(_step("a", inputs={"q": "refund window"}, output={"q": "refund window", "days": 30}))
     assert s.status == "pass" and s.flags == []
-
-
-# step_error -----------------------------------------------------------------
 
 
 def test_step_error_fails():
@@ -57,9 +50,6 @@ def test_error_text_fails_even_if_status_was_left_pass():
     assert _score(_step("a", error="bad value")).status == "fail"
 
 
-# agent_status ---------------------------------------------------------------
-
-
 def test_agent_marked_fail_without_error():
     s = _score(_step("a", status="fail", output={"grounded": False}))
     assert _rules(s) == [("agent_status", "fail")]
@@ -68,9 +58,6 @@ def test_agent_marked_fail_without_error():
 def test_agent_marked_warn():
     s = _score(_step("a", status="warn", output=1))
     assert s.status == "warn" and _rules(s) == [("agent_status", "warn")]
-
-
-# empty_result ---------------------------------------------------------------
 
 
 @pytest.mark.parametrize("output", [None, "", {}, []])
@@ -87,9 +74,6 @@ def test_empty_result_ignores_non_tool_steps_and_blob_outputs():
     assert _score(_step("a", output_ref=ref), _trace(_step("a", output_ref=ref), blobs={ref: [1]})).flags == []
 
 
-# error_result ---------------------------------------------------------------
-
-
 def test_tool_result_carrying_an_error_warns():
     s = _score(_step("a", output={"error": "rate limited", "items": []}))
     assert _rules(s) == [("error_result", "warn")]
@@ -98,9 +82,6 @@ def test_tool_result_carrying_an_error_warns():
 
 def test_falsy_error_field_is_fine():
     assert _score(_step("a", output={"error": None, "items": [1]})).flags == []
-
-
-# type_drift -----------------------------------------------------------------
 
 
 def test_number_becoming_string_warns():
@@ -117,9 +98,6 @@ def test_type_drift_reads_blob_outputs():
     ref = "sha256:" + "1" * 64
     step = _step("a", kind="llm", inputs={"n": 1}, output_ref=ref)
     assert _rules(_score(step, _trace(step, blobs={ref: {"n": "one"}}))) == [("type_drift", "warn")]
-
-
-# mismatch -------------------------------------------------------------------
 
 
 def test_tool_answering_a_different_value_warns():
@@ -145,9 +123,6 @@ def test_mismatch_skips_llm_and_decision_steps_which_may_change_values():
 def test_mismatch_skips_long_free_text():
     long_a, long_b = "a" * 100, "b" * 100
     assert _score(_step("a", inputs={"text": long_a}, output={"text": long_b})).flags == []
-
-
-# stale ----------------------------------------------------------------------
 
 
 def test_older_year_fed_next_to_newer_year_is_stale():
@@ -178,9 +153,6 @@ def test_numbers_outside_the_year_range_are_ignored():
         _step("s3", depends_on=["s1", "s2"]),
     )
     assert rule_stale(trace) == {}
-
-
-# anomalies ------------------------------------------------------------------
 
 
 def _timed(sid, start, end, **fields):
@@ -231,9 +203,6 @@ def test_baseline_needs_enough_samples():
     base = _history(2, size_items=100)
     small = _trace(_timed("s1", 0, 1, name="search", output=[1]), status="pass")
     assert score_trace(small, base)["s1"].flags == []
-
-
-# Samples --------------------------------------------------------------------
 
 
 def test_stale_policy_sample_step2_warn_step4_fail():

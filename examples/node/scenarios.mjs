@@ -1,5 +1,3 @@
-// Node ports of examples/scenarios/*.py. Each one records the same agent run
-// as its Python twin, so the trace files must come out byte identical.
 import { Recorder, currentStep } from "../../packages/node/dist/index.js";
 
 export class TickClock {
@@ -129,7 +127,7 @@ async function toolArgs(outPath, clock) {
     meta: { framework: "generic", scenario: "tool argument error" },
     clock,
   });
-  // Async on purpose: proves the wrapper and currentStep work across awaits.
+
   const readTicket = rec.record(
     async function read_ticket(ticket_id) {
       return { id: ticket_id, customer: "acme-corp-eu", request: "upgrade to pro plan for 25 seats" };

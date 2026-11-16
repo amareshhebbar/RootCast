@@ -50,7 +50,6 @@ jobs:
       - run: npm test
 
   crosslang:
-    # Phase 1 gate: Node writes traces, Python loads, validates and byte compares them.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -68,7 +67,6 @@ jobs:
           ROOTCAST_REQUIRE_NODE: "1"
 
   ui:
-    # Phase 4 gate: the real UI in headless Chrome renders the cause and replay flips the banner.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

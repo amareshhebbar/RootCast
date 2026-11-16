@@ -1,7 +1,3 @@
-// Phase 1 gate, Node half: record the sample scenarios in Node and prove the
-// files are byte identical to the Python recorded samples, and that Node
-// loads and validates the Python files clean.
-// The Python half is packages/python/tests/test_crosslang.py.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync } from "node:fs";
@@ -22,7 +18,7 @@ for (const [name, want] of Object.entries(expected)) {
 
   test(name + ": Node trace is byte identical to the Python sample", () => {
     const fromNode = readFileSync(nodePath, "utf-8");
-    // Tolerate a CRLF checkout so the test also runs on Windows clones.
+
     const fromPython = readFileSync(pyPath, "utf-8").replace(/\r\n/g, "\n");
     assert.equal(fromNode, fromPython);
   });
