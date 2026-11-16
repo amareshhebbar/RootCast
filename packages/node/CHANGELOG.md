@@ -2,7 +2,9 @@
 
 All notable changes to the rootcast Node package.
 
-## 0.1.0
+## 0.2.0
+
+First npm release. Versioned in step with the Python package.
 
 * Recorder with `step()` and the `record()` function wrapper, `currentStep()` across async code, injectable clock.
 * Large outputs stored once in the trace's `blobs` by sha256, measured in UTF-8 bytes.

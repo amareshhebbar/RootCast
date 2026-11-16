@@ -174,7 +174,6 @@ def _venv_bin(env_dir: str, exe: str) -> str:
     return os.path.join(env_dir, sub, exe + suffix)
 
 
-# The known fix for each committed sample: replaying it must flip the run FAIL to PASS.
 SAMPLE_FIXES = {
     "stale_policy": ["step2.output=policy_2026"],
     "rag_lookup": ["step2.output=pediatric_docs"],
@@ -231,14 +230,80 @@ def check_fresh_install(wheel: str, version: str) -> None:
                 for spec in SAMPLE_FIXES[name]:
                     args += ["--set", spec]
             else:
-                # Nothing downstream reads step2's output as input, so no agent is needed.
                 args = [cli, "replay", trace, "--set", 'step2.output={"source":"policy_2026","window_days":30}']
             out = run(args, cwd=work)
             if name in SAMPLE_FIXES and "run: FAIL -> PASS  (flipped)" not in out:
                 raise CheckFailed("replay of the known fix did not flip " + label + " to PASS")
             log("view, validate, audit, replay ran on " + label)
+
+        check_installed_demo(cli, work)
+        check_installed_serve(cli, work)
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def check_installed_demo(cli: str, work: str) -> None:
+    demo = os.path.join(work, "demo")
+    run([cli, "demo", demo], cwd=work)
+    for name, specs in SAMPLE_FIXES.items():
+        trace = os.path.join(demo, name + ".rootcast.json")
+        if not os.path.exists(trace):
+            raise CheckFailed("rootcast demo did not write " + name)
+        args = [cli, "replay", trace]
+        for spec in specs:
+            args += ["--set", spec]
+        out = run(args, cwd=work)
+        if "run: FAIL -> PASS  (flipped)" not in out:
+            raise CheckFailed("bundled replay of " + name + " did not flip to PASS")
+    log("rootcast demo and bundled replay agents flip every sample to PASS")
+
+
+def _free_port() -> int:
+    import socket
+
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+def check_installed_serve(cli: str, work: str) -> None:
+    import time
+
+    port = _free_port()
+    proc = subprocess.Popen([cli, "serve", "--port", str(port)], cwd=work, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    base = "http://127.0.0.1:" + str(port)
+    try:
+        info = None
+        for _ in range(50):
+            if proc.poll() is not None:
+                raise CheckFailed("rootcast serve exited: " + (proc.stdout.read() if proc.stdout else ""))
+            try:
+                with urllib.request.urlopen(base + "/api/info", timeout=2) as resp:
+                    info = json.load(resp)
+                break
+            except (urllib.error.URLError, ConnectionError):
+                time.sleep(0.1)
+        if info is None:
+            raise CheckFailed("rootcast serve did not answer on " + base)
+        with urllib.request.urlopen(base + "/", timeout=5) as resp:
+            page = resp.read().decode("utf-8")
+        if "<title>Rootcast</title>" not in page:
+            raise CheckFailed("rootcast serve did not return the UI page")
+        if len(info.get("samples", [])) != 3 or len(info.get("agents", [])) != 3:
+            raise CheckFailed("rootcast serve is missing bundled samples or agents: " + json.dumps(info))
+        with open(os.path.join(work, "demo", "stale_policy.rootcast.json"), "r", encoding="utf-8") as fh:
+            trace = json.load(fh)
+        body = json.dumps({"trace": trace, "sets": SAMPLE_FIXES["stale_policy"]}).encode("utf-8")
+        req = urllib.request.Request(base + "/api/replay", data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.load(resp)
+        status = result["result"]["status"]
+        if status["before"] != "fail" or status["after"] != "pass":
+            raise CheckFailed("UI replay endpoint did not flip stale_policy: " + json.dumps(status))
+    finally:
+        proc.terminate()
+        proc.wait(timeout=10)
+    log("rootcast serve answers with the bundled UI, samples, agents and a working replay")
 
 
 def main(argv: list[str] | None = None) -> int:

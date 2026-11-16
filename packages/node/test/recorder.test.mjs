@@ -113,7 +113,7 @@ test("snapshots are taken at record time", () => {
 
 test("large outputs move to blobs by UTF-8 byte length", () => {
   const rec = new Recorder({ runId: "d" });
-  // 1000 UTF-16 units but 3000 UTF-8 bytes: must be referenced, not inlined.
+
   const big = "日".repeat(1000);
   const small = "x".repeat(100);
   rec.record(function f() {

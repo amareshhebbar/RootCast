@@ -37,7 +37,6 @@ def build(rec: Recorder):
     return parse_question, retrieve, generate_answer, check_answer
 
 
-# Named values for rootcast replay --set, e.g. --set step2.output=pediatric_docs
 REPLAY_VALUES = {"pediatric_docs": {"topic": "drug_x_max_dose", "docs": [CORPUS[1]]}}
 
 
@@ -46,7 +45,6 @@ def replay_agent(rec: Recorder) -> Agent:
     agent = Agent()
     agent.add(parse_question)
     agent.add(retrieve)
-    # A deterministic template stands in for the model in this sample, so it is safe to re run.
     agent.add(generate_answer, external=False)
     agent.add(check_answer)
     return agent

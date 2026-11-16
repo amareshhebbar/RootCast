@@ -1,19 +1,9 @@
 import { createHash } from "node:crypto";
 
-/**
- * Cross language JSON encoding. Every Rootcast SDK must produce the same
- * bytes for the same logical value, see docs/trace-schema.md.
- *
- * Numbers use ECMAScript Number.prototype.toString, which is what
- * String(n) already does in JS. Strings use JSON.stringify escaping.
- * Keys sort by Unicode code point, not by UTF-16 unit.
- */
-
 export function formatNumber(n: number): string {
   return Number.isFinite(n) ? String(n) : "null";
 }
 
-/** Compare two strings by Unicode code point, the order Python uses for str. */
 export function compareCodePoints(a: string, b: string): number {
   if (a === b) return 0;
   const ia = a[Symbol.iterator]();
@@ -29,26 +19,20 @@ export function compareCodePoints(a: string, b: string): number {
   }
 }
 
-/** Length in Unicode code points, the way Python len() counts a str. */
 export function codePointLength(s: string): number {
   let n = 0;
   for (const _ of s) n += 1;
   return n;
 }
 
-/**
- * Marks a subtree whose object keys must be written sorted, even inside a
- * pretty printed file. Recorded payloads are always sorted, which keeps
- * integer like keys (that JS objects reorder) in the same place as Python.
- */
 export class Sorted {
   constructor(readonly value: unknown) {}
 }
 
 export interface EncodeOptions {
-  /** Spaces per level for the pretty file form. Omit for the compact form. */
+
   indent?: number;
-  /** Sort object keys at every depth. */
+
   sortKeys?: boolean;
 }
 
@@ -96,28 +80,23 @@ function wrap(open: string, close: string, parts: string[], indent: number | und
   return open + inner + parts.join("," + inner) + "\n" + " ".repeat(indent * depth) + close;
 }
 
-/** Plain JSON copy of a value: toJSON applied, undefined and functions dropped, bigint as string. */
 export function toPlain(value: unknown): unknown {
   const raw = JSON.stringify(value, (_k, v) => (typeof v === "bigint" ? v.toString() : v));
   return raw === undefined ? null : JSON.parse(raw);
 }
 
-/** Canonical compact form with sorted keys, as a string. */
 export function canonicalJson(value: unknown): string {
   return encode(toPlain(value), { sortKeys: true });
 }
 
-/** Canonical form as UTF-8 bytes. */
 export function canonicalBytes(value: unknown): Uint8Array {
   return new TextEncoder().encode(canonicalJson(value));
 }
 
-/** "sha256:" plus the lowercase hex sha256 of the canonical bytes. */
 export function refOf(value: unknown): string {
   return "sha256:" + createHash("sha256").update(canonicalBytes(value)).digest("hex");
 }
 
-/** Detached snapshot of a value at record time, with keys in canonical order. */
 export function snapshot(value: unknown): unknown {
   return JSON.parse(canonicalJson(value));
 }

@@ -1,7 +1,4 @@
----
-title: "Replay"
-description: "Re run a recorded trace with one value changed and diff the outcome step by step."
----
+# Replay
 
 `rootcast replay` proves a cause. It re runs a recorded trace with one value changed and reports, step by step, what changed and whether the run outcome flips.
 
@@ -39,16 +36,14 @@ Traces hold data, not code, so recomputing needs the agent's functions. `--agent
 from rootcast import Agent
 
 def replay_agent(rec):
-    # Build the same recorded functions, against the recorder replay passes in.
     read_order, lookup_policy, decide_refund, issue_refund = build(rec)
     agent = Agent()
     agent.add(read_order)
     agent.add(lookup_policy)
     agent.add(decide_refund)
-    agent.add(issue_refund, external=False)  # only the policy check, no payment API
+    agent.add(issue_refund, external=False)
     return agent
 
-# Optional named values usable as --set step2.output=policy_2026
 REPLAY_VALUES = {"policy_2026": {...}}
 ```
 

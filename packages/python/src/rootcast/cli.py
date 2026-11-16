@@ -5,6 +5,7 @@ import json
 import os
 import sys
 
+from . import bundle
 from .causal import CAUSE, AuditResult, audit
 from .replay import ReplayError, load_agent_module, parse_set, render_replay, replay
 from .schema import TRACE_SUFFIX, Trace, trace_path, validate
@@ -122,7 +123,6 @@ def cmd_audit(args) -> int:
 
 
 def _resolve_trace(ref: str) -> str:
-    """A trace file path, or a run id looked up in the trace store."""
     if os.path.exists(ref):
         return ref
     path = trace_path(ref)
@@ -135,8 +135,9 @@ def cmd_replay(args) -> int:
     try:
         trace = Trace.load(_resolve_trace(args.run))
         factory, named = None, {}
-        if args.agent:
-            module = load_agent_module(args.agent)
+        agent_path = args.agent or bundle.match_agent(trace)
+        if agent_path:
+            module = load_agent_module(agent_path)
             factory = module.replay_agent
             named = getattr(module, "REPLAY_VALUES", {})
         injections = [parse_set(spec, trace, named) for spec in args.set]
@@ -148,6 +149,22 @@ def cmd_replay(args) -> int:
         print(json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
     else:
         print(render_replay(result))
+    return 0
+
+
+def cmd_demo(args) -> int:
+    written = bundle.write_demo(args.dir)
+    if not written:
+        print("demo: no bundled sample traces found", file=sys.stderr)
+        return 2
+    for path in written:
+        print("wrote " + path)
+    sample = os.path.join(args.dir, "stale_policy.rootcast.json")
+    print("")
+    print("next:")
+    print("  rootcast audit " + sample)
+    print("  rootcast replay " + sample + " --set step2.output=policy_2026")
+    print("  rootcast serve --open")
     return 0
 
 
@@ -163,6 +180,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="rootcast")
     parser.add_argument("--version", action="version", version="rootcast " + __version__)
     sub = parser.add_subparsers(dest="command", required=True)
+
+    p_demo = sub.add_parser("demo", help="write the three sample failed runs to a folder")
+    p_demo.add_argument("dir", nargs="?", default="rootcast-demo")
+    p_demo.set_defaults(func=cmd_demo)
 
     p_view = sub.add_parser("view")
     p_view.add_argument("path")

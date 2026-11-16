@@ -1,4 +1,3 @@
-"""Shared cross language vectors. The Node suite runs the same files."""
 import json
 import os
 
@@ -49,7 +48,6 @@ def test_format_number_matches_ecmascript(value, text):
 
 
 def test_keys_sort_by_code_point_not_utf16():
-    # U+1F600 is above U+FB01 by code point, below it in UTF-16 units.
     assert canonical_bytes({"\U0001F600": 1, "ﬁ": 2}).decode("utf-8") == '{"ﬁ":2,"\U0001F600":1}'
 
 

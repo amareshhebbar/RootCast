@@ -1,11 +1,3 @@
-"""Decision graph and the audit of a failed run.
-
-Baseline causal engine: build the graph from depends_on, find the step
-where the run failed, walk back through everything that fed it, and name the
-earliest ancestor that scoring flagged as the CAUSE. The divergence walk is
-owned by the causal engine track (feat/causal-engine) and is expected to grow
-more signals. The audit result it returns is the contract the CLI renders.
-"""
 from __future__ import annotations
 
 from collections import deque
@@ -37,7 +29,6 @@ class DecisionGraph:
         return cls(steps, order, parents, children)
 
     def ancestors(self, step_id: str) -> list[str]:
-        """Every step that fed step_id, directly or not, in trace order."""
         seen: set[str] = set()
         queue = deque(self.parents.get(step_id, []))
         while queue:
@@ -49,7 +40,6 @@ class DecisionGraph:
         return sorted(seen, key=self.order.__getitem__)
 
     def path(self, start: str, end: str) -> list[str]:
-        """Shortest chain of edges from start down to end, or [] if none."""
         prev: dict[str, Optional[str]] = {start: None}
         queue = deque([start])
         while queue:
@@ -77,7 +67,6 @@ class AuditResult:
     chain: list[str] = field(default_factory=list)
 
     def tag(self, step_id: str) -> str:
-        """The audit tag for a step: cause, fail, warn or pass."""
         if step_id == self.cause and self.cause != self.failure:
             return CAUSE
         return self.scores[step_id].status
@@ -107,7 +96,6 @@ class AuditResult:
 
 
 def find_failure(trace: Trace, scores: dict[str, Score]) -> Optional[str]:
-    """The step where the run visibly failed: the last FAIL step, else the last step of a failed run."""
     failing = [s.id for s in trace.steps if scores[s.id].status == FAIL]
     if failing:
         return failing[-1]
@@ -117,7 +105,6 @@ def find_failure(trace: Trace, scores: dict[str, Score]) -> Optional[str]:
 
 
 def find_cause(graph: DecisionGraph, failure: str, scores: dict[str, Score]) -> str:
-    """Earliest ancestor of the failure that scoring flags WARN or FAIL, else the failure itself."""
     for sid in graph.ancestors(failure):
         if scores[sid].status in (WARN, FAIL):
             return sid

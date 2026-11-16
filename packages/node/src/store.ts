@@ -2,15 +2,6 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, join } from "node:path";
 import { TraceData, validate } from "./schema.js";
 
-/**
- * On disk conventions, see docs/trace-files.md.
- *
- *   <store>/runs/<run_id>.rootcast.json
- *
- * The store is ROOTCAST_DIR, or .rootcast in the working directory.
- * Every file is self contained: large payloads live in its own blobs map.
- */
-
 export const TRACE_SUFFIX = ".rootcast.json";
 export const DEFAULT_STORE = ".rootcast";
 export const STORE_ENV = "ROOTCAST_DIR";
@@ -23,12 +14,10 @@ export function storeRoot(root?: string): string {
   return root || process.env[STORE_ENV] || DEFAULT_STORE;
 }
 
-/** Conventional path of a run inside a trace store. */
 export function tracePath(runId: string, root?: string): string {
   return join(storeRoot(root), "runs", safeRunId(runId) + TRACE_SUFFIX);
 }
 
-/** Paths of every trace in a store, sorted by file name. */
 export function listTraces(root?: string): string[] {
   const dir = join(storeRoot(root), "runs");
   if (!existsSync(dir)) return [];
@@ -50,12 +39,10 @@ export class TraceValidationError extends Error {
   }
 }
 
-/** Read and parse a trace file without validating it. */
 export function readTrace(path: string): unknown {
   return JSON.parse(readFileSync(path, "utf-8"));
 }
 
-/** Validate a trace file. Returns errors, empty when valid. Unreadable or non JSON files are errors too. */
 export function validateFile(path: string): string[] {
   let data: unknown;
   try {
@@ -66,7 +53,6 @@ export function validateFile(path: string): string[] {
   return validate(data);
 }
 
-/** Load a trace file, throwing TraceValidationError when it is not valid. */
 export function loadTrace(path: string): TraceData {
   const data = readTrace(path);
   const errors = validate(data);

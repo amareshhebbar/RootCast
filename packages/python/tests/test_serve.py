@@ -1,9 +1,3 @@
-"""rootcast serve and the web UI.
-
-API tests always run. Browser tests drive the real ui/index.html in headless
-Chrome or Edge. They skip when no browser is found, unless
-ROOTCAST_REQUIRE_BROWSER=1 (set in CI), in which case they fail.
-"""
 import json
 import os
 import re
@@ -59,9 +53,6 @@ def _sample(name):
         return json.load(fh)
 
 
-# API ----------------------------------------------------------------------------
-
-
 def test_ui_is_served(server):
     status, body = _get(server + "/")
     assert status == 200 and b"<title>Rootcast</title>" in body
@@ -91,7 +82,6 @@ def test_audit_endpoint_is_the_engine_audit(server):
 
 
 def test_ui_replay_equals_cli_replay(server):
-    """One engine, two front doors: the endpoint returns exactly what replay() gives the CLI."""
     sets = ["step2.output=policy_2026"]
     status, out = _post(server + "/api/replay", {"trace": _sample("stale_policy"), "sets": sets})
     assert status == 200
@@ -126,9 +116,6 @@ def test_trace_without_a_matching_agent_still_audits():
         assert status == 422 and "--agent" in out["error"]
     finally:
         srv.shutdown()
-
-
-# Browser ------------------------------------------------------------------------
 
 
 def _browser():
@@ -204,7 +191,6 @@ CLICK_SCRIPT = """
 
 
 def test_ui_click_to_replay_flips_banner(tmp_path):
-    """Drive the real UI with clicks: open sample, click the cause, pick a value, run replay."""
     with open(find_ui(), "r", encoding="utf-8") as fh:
         page = fh.read().replace("</body>", CLICK_SCRIPT + "</body>")
     harness = tmp_path / "index.html"

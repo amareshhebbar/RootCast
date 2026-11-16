@@ -27,7 +27,7 @@ const decideRefund = rec.record(function decide_refund(order, policy) {
 const order = await readOrder(4417);
 decideRefund(order, policy);
 
-rec.save(); // .rootcast/runs/refund-7af3.rootcast.json
+rec.save();
 ```
 
 Parameter names are read from the function source. Bundlers and minifiers rename them, so pass `params: ["order", "policy"]` for bundled code. `exclude` drops arguments such as secrets, and `captureInputs: false` records no inputs.
@@ -49,8 +49,8 @@ A thrown error marks the step `fail` with `error` set to `Name: message`, then i
 ```js
 import { loadTrace, validateFile, listTraces } from "rootcast";
 
-const errors = validateFile("refund-7af3.rootcast.json"); // [] when valid
-const trace = loadTrace("refund-7af3.rootcast.json");     // throws TraceValidationError when invalid
+const errors = validateFile("refund-7af3.rootcast.json");
+const trace = loadTrace("refund-7af3.rootcast.json");
 ```
 
 ```bash

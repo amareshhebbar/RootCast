@@ -1,17 +1,11 @@
 import { codePointLength, refOf } from "./canonical.js";
 import type { Step, TraceData } from "./schema.js";
 
-/**
- * Data flow dependency inference. A line for line port of the Python
- * rootcast.infer module so both SDKs infer the same edges.
- * See "Dependency inference" in docs/trace-schema.md.
- */
-
 export const MIN_STRING_LEN = 8;
 export const META_KEY = "inferred_depends_on";
 
 export interface InferOptions {
-  /** Only infer for steps with no declared depends_on. Default true. */
+
   onlyUndeclared?: boolean;
   minStringLen?: number;
 }
@@ -103,10 +97,6 @@ function match(
   for (const child of children(value)) match(child, false, produced, consumer, minLen, found);
 }
 
-/**
- * Fill depends_on from data flow, in place. Returns the edges that were
- * added, and records them under meta.inferred_depends_on.
- */
 export function inferDependencies(trace: TraceData, opts: InferOptions = {}): Record<string, string[]> {
   const onlyUndeclared = opts.onlyUndeclared !== false;
   const minLen = opts.minStringLen ?? MIN_STRING_LEN;

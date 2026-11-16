@@ -33,6 +33,20 @@ So instead of guessing, you get a clear answer: here is where it broke, and here
 
 <br/>
 
+## Try it in one minute
+
+Rootcast is on PyPI. Nothing else to clone or configure:
+
+```bash
+pip install rootcast
+rootcast demo
+rootcast audit rootcast-demo/stale_policy.rootcast.json
+rootcast replay rootcast-demo/stale_policy.rootcast.json --set step2.output=policy_2026
+rootcast serve --open
+```
+
+`rootcast demo` writes three real failed agent runs (a stale policy lookup, a RAG retrieval of the wrong document, a tool called with a malformed argument). `audit` names the step that caused the failure, `replay` proves it by flipping the run from FAIL to PASS, and `serve` opens the decision map in your browser with the samples ready to click. The Node SDK is on npm as `rootcast` and writes the same trace files.
+
 ## See it in thirty seconds
 
 Today, when an agent fails, you read this:
@@ -145,11 +159,9 @@ import { Recorder } from "rootcast";
 
 const rec = new Recorder({ runId: "refund-7af3" });
 
-// Wrap a function: arguments become inputs, the return value the output.
 const lookupPolicy = rec.record(searchPolicy, { kind: "tool" });
 const policy = await lookupPolicy("refund window");
 
-// Or record a block by hand.
 await rec.step("decide_refund", { kind: "decision" }, (s) => {
   s.output(decide(order, policy));
 });
@@ -225,13 +237,34 @@ Rootcast is the missing middle: it takes one real run that went wrong and gives 
 
 ## Roadmap
 
-* v0.1  Trace schema, Python and Node recorders, CLI viewer
-* v0.2  Causal engine (decision graph, divergence detection, PASS WARN FAIL scoring)
-* v0.3  Replay engine (single variable counterfactual, cached deterministic steps)
-* v0.4  Web UI (interactive decision map, click to replay)
-* v0.5  Framework adapters (LangGraph, CrewAI, OpenAI, Anthropic), published to PyPI and npm
+Shipped in v0.2.0, on PyPI and npm:
+
+* Trace schema v0.1, frozen, with byte identical Python and Node recorders and dependency inference
+* Causal engine: decision graph, PASS WARN FAIL scoring, anomaly flags, earliest divergence and CAUSE
+* Replay engine: single variable counterfactual, recorded cache for unchanged steps, step by step outcome diff
+* Web UI: interactive decision map with click to replay, served by `rootcast serve`
+
+Next:
+
+* Framework adapters for LangGraph, CrewAI and the OpenAI and Anthropic tool loops
+* Live streaming capture from running agents
 
 See [planning-execute.md](./planning-execute.md) for the full phased build with task owners.
+
+<br/>
+
+## Documentation
+
+| Topic | Doc |
+|---|---|
+| Recording a run from Python or Node | [docs/recording.md](./docs/recording.md) |
+| Every CLI command | [docs/cli.md](./docs/cli.md) |
+| How the audit scores steps and names the cause | [docs/audit.md](./docs/audit.md) |
+| Replay and writing a replay agent | [docs/replay.md](./docs/replay.md) |
+| The web UI | [docs/ui.md](./docs/ui.md) |
+| Trace schema and canonical encoding | [docs/trace-schema.md](./docs/trace-schema.md) |
+| Trace file naming and the trace store | [docs/trace-files.md](./docs/trace-files.md) |
+| Releasing both packages | [docs/releasing.md](./docs/releasing.md) |
 
 <br/>
 

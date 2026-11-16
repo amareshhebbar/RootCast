@@ -1,6 +1,3 @@
-// Record the sample scenarios from Node. Build the SDK first:
-//   npm --prefix packages/node run build
-//   node examples/node/generate_traces.mjs --out some/dir
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { SCENARIOS, TickClock } from "./scenarios.mjs";

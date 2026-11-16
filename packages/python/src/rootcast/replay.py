@@ -1,23 +1,3 @@
-"""Counterfactual replay: re run a trace with one value changed.
-
-Replay never touches the live run. It walks the recorded steps in order:
-
-  unchanged   inputs are identical to the recording, so the recorded result
-              is served from the trace (the cache). Upstream steps always land here.
-  injected    the user set this step's output (or an input) with --set.
-  recomputed  an upstream change reached this step's inputs, so the agent's own
-              function is called again with the rewritten inputs.
-
-External calls (tool, io and llm steps by default) are never called out to.
-When one of them would have to be recomputed, replay stops with
-ExternalCallError and asks for the value to be injected explicitly. An agent
-can mark a function as safe to re run (a sandboxed stand in) with
-external=False when registering it.
-
-The result is a ReplayResult: a step by step diff between the recorded run
-and the replayed one plus the run status delta. It renders as text for the
-CLI and serializes with to_dict() for the UI.
-"""
 from __future__ import annotations
 
 import copy
@@ -37,7 +17,7 @@ UNCHANGED, INJECTED, RECOMPUTED = "unchanged", "injected", "recomputed"
 
 
 class ReplayError(Exception):
-    """Replay cannot proceed. The message says what to pass to fix it."""
+    pass
 
 
 class ExternalCallError(ReplayError):
@@ -49,9 +29,6 @@ class ExternalCallError(ReplayError):
         )
 
 
-# The agent side ----------------------------------------------------------
-
-
 @dataclass
 class _Entry:
     fn: Callable
@@ -59,23 +36,16 @@ class _Entry:
 
 
 class Agent:
-    """Functions replay may call, by step name.
-
-    Register the same functions the agent records with, built against the
-    Recorder replay hands you, so status and errors are captured the same way.
-    """
 
     def __init__(self) -> None:
         self.entries: dict[str, _Entry] = {}
 
     def add(self, fn: Callable, name: Optional[str] = None, external: Optional[bool] = None) -> Callable:
-        """external None means decided by the step kind; False marks a safe, sandboxed function."""
         self.entries[name or fn.__name__] = _Entry(fn, external)
         return fn
 
 
 def load_agent_module(path: str):
-    """Import an agent file. It must define replay_agent(rec) and may define REPLAY_VALUES."""
     spec = importlib.util.spec_from_file_location("rootcast_replay_agent", os.path.abspath(path))
     if spec is None or spec.loader is None:
         raise ReplayError("cannot load agent " + path)
@@ -86,13 +56,10 @@ def load_agent_module(path: str):
     return module
 
 
-# Injections --------------------------------------------------------------
-
-
 @dataclass
 class Injection:
     step_id: str
-    target: str  # "output" or "inputs"
+    target: str
     path: list
     value: Any
     raw: str = ""
@@ -103,11 +70,6 @@ class Injection:
 
 
 def parse_set(spec: str, trace: Trace, named: Optional[dict] = None) -> Injection:
-    """Parse "step2.output=VALUE" or "step2.output.window_days=30" or "step2.inputs.query=x".
-
-    The step may be named by id or by name. VALUE is JSON when it parses,
-    else a name from the agent's REPLAY_VALUES, else @file.json, else a plain string.
-    """
     if "=" not in spec:
         raise ReplayError("--set needs STEP.output=VALUE, got " + spec)
     lhs, raw_value = spec.split("=", 1)
@@ -161,9 +123,6 @@ def _set_path(value: Any, path: list, new: Any) -> Any:
     return out
 
 
-# Data flow rewriting -----------------------------------------------------
-
-
 def _paths(value: Any, prefix: tuple = ()):
     yield prefix, value
     if isinstance(value, dict):
@@ -181,7 +140,6 @@ def _get(value: Any, path: tuple):
 
 
 def _substitutions(old: Any, new: Any) -> dict[str, Any]:
-    """Map the hash of every non trivial part of an old output to the matching part of the new one."""
     subs: dict[str, Any] = {}
     for path, part in _paths(old):
         if path and _is_scalar_trivial(part, MIN_STRING_LEN):
@@ -210,9 +168,6 @@ def _rewrite(value: Any, subs: dict[str, Any], top: bool = True) -> Any:
     return value
 
 
-# Diff --------------------------------------------------------------------
-
-
 @dataclass
 class FieldChange:
     path: str
@@ -227,7 +182,6 @@ _MISSING = object()
 
 
 def diff_values(before: Any, after: Any, path: str = "") -> list[FieldChange]:
-    """Leaf level differences between two JSON values."""
     if ref_of(before) == ref_of(after):
         return []
     if isinstance(before, dict) and isinstance(after, dict):
@@ -285,7 +239,6 @@ class StepDiff:
 
 @dataclass
 class ReplayResult:
-    """What the UI consumes: the injections, the per step diff and the status delta."""
 
     original: Trace
     replayed: Trace
@@ -325,9 +278,6 @@ class ReplayResult:
         }
 
 
-# Executor ----------------------------------------------------------------
-
-
 def _run_status(original: Trace, steps: list[Step]) -> str:
     if any(s.status == "fail" for s in steps):
         return "fail"
@@ -337,12 +287,6 @@ def _run_status(original: Trace, steps: list[Step]) -> str:
 
 
 def replay(trace: Trace, injections: list[Injection], agent_factory: Optional[Callable] = None) -> ReplayResult:
-    """Re run trace with injections applied and diff it against the recording.
-
-    agent_factory(rec) returns an Agent (or a dict of name to function) built
-    against the Recorder it is given. It is only needed when a step has to be
-    recomputed.
-    """
     if not injections:
         raise ReplayError("nothing to replay: pass at least one --set")
     by_step: dict[str, list[Injection]] = {}
@@ -439,8 +383,6 @@ def replay(trace: Trace, injections: list[Injection], agent_factory: Optional[Ca
     )
     return ReplayResult(original=trace, replayed=replayed, injections=list(injections), steps=diffs)
 
-
-# Text --------------------------------------------------------------------
 
 TAG = {"pass": "ok", "warn": "WARN", "fail": "FAIL", "unknown": ".."}
 MAX_VALUE = 48

@@ -1,15 +1,3 @@
-// Release check for the rootcast npm package.
-//
-//   node scripts/release_check.mjs                 full check, local tarball
-//   node scripts/release_check.mjs --offline       skip the registry lookup
-//   node scripts/release_check.mjs --from-registry install rootcast@<version> from npm instead
-//                                                  (the post publish gate)
-//   add --keep to leave the temp project on disk
-//
-// Steps: registry lookup (name and version free), tests, npm pack and tarball
-// inspection, then a fresh project that installs the package, records a
-// trace, loads and validates it, runs the CLI, and type checks a TypeScript
-// consumer under nodenext and bundler resolution with no @types/node.
 import { execSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -38,8 +26,6 @@ function fail(msg) {
 function run(cmd, cwd, opts = {}) {
   return execSync(cmd, { cwd, encoding: "utf-8", stdio: opts.quiet ? "pipe" : ["ignore", "pipe", "pipe"], ...opts });
 }
-
-// 1. Registry -------------------------------------------------------------------
 
 function registry() {
   step("registry: is " + pkg.name + "@" + pkg.version + " free?");
@@ -72,8 +58,6 @@ function registry() {
   else ok(pkg.version + " is not published yet");
 }
 
-// 2. Build, test, pack ----------------------------------------------------------
-
 const REQUIRED = ["package.json", "README.md", "LICENSE", "CHANGELOG.md", "dist/index.js", "dist/index.d.ts", "dist/cli.js"];
 const FORBIDDEN = [/^src\//, /^test\//, /^scripts\//, /^node_modules\//, /^tsconfig/, /\.tsbuildinfo$/, /\.rootcast\.json$/];
 
@@ -105,8 +89,6 @@ function pack(outDir) {
   if (info.name !== pkg.name || info.version !== pkg.version) fail("tarball is " + info.name + "@" + info.version);
   return join(outDir, info.filename);
 }
-
-// 3. Fresh project ----------------------------------------------------------------
 
 const RECORD = `
 import {
@@ -226,8 +208,6 @@ function freshProject(tarball) {
   }
   return dir;
 }
-
-// Main ------------------------------------------------------------------------------
 
 registry();
 const out = mkdtempSync(join(tmpdir(), "rootcast-pack-"));

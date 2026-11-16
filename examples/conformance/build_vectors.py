@@ -1,9 +1,3 @@
-"""Regenerate the cross language conformance vectors from the Python SDK.
-
-    python examples/conformance/build_vectors.py
-
-Every SDK test suite loads these files and must reproduce them exactly.
-"""
 import json
 import os
 

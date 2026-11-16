@@ -1,10 +1,5 @@
 name: release-node
 
-# Publishes packages/node to npm. A real publish only happens on a pushed tag
-# node-v<version> (for example node-v0.1.0) and waits for approval on the
-# "npm" environment. Running it by hand is a dry run: check and pack only.
-# Python releases use v* tags in release.yml, so the two never collide.
-
 on:
   push:
     tags:
@@ -49,7 +44,7 @@ jobs:
     environment: npm
     permissions:
       contents: read
-      id-token: write # npm provenance
+      id-token: write
     defaults:
       run:
         working-directory: packages/node
@@ -65,7 +60,6 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   verify:
-    # Phase 5 gate: a fresh project installs the published package and records a trace.
     needs: [check, publish]
     runs-on: ubuntu-latest
     defaults:

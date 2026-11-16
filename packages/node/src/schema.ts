@@ -57,10 +57,6 @@ function omitted(value: unknown): boolean {
   return value === null || value === undefined || (Array.isArray(value) && value.length === 0);
 }
 
-/**
- * The trace file text: two space indent, trailing LF, keys in spec order,
- * null fields and empty depends_on omitted. Byte identical to the Python SDK.
- */
 export function traceToJson(data: TraceData): string {
   const steps = data.steps.map((step) => {
     const out: Record<string, unknown> = {};
@@ -101,7 +97,6 @@ function nonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
-/** Validate a parsed trace. Same rules and messages as the Python validator. */
 export function validate(data: unknown): string[] {
   const errors: string[] = [];
   if (!isObject(data)) return ["trace must be a JSON object"];

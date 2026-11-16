@@ -26,7 +26,6 @@ def build(rec: Recorder):
     return read_ticket, lookup_account, plan_action, update_subscription
 
 
-# Named values for rootcast replay --set, e.g. --set step3.output=fixed_plan
 REPLAY_VALUES = {
     "fixed_plan": {"tool": "update_subscription", "args": {"account": "acme-corp-eu", "plan": "pro", "seats": 25}},
     "updated": {"status": "updated", "plan": "pro", "seats": 25},
@@ -35,7 +34,6 @@ REPLAY_VALUES = {
 
 def replay_agent(rec: Recorder) -> Agent:
     agent = Agent()
-    # update_subscription is the billing API: an external call replay must not make.
     for fn in build(rec):
         agent.add(fn)
     return agent

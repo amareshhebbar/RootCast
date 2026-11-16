@@ -1,27 +1,3 @@
-"""Per step PASS / WARN / FAIL scoring and anomaly flags.
-
-Scoring looks at each step in isolation (plus the steps that fed it) and
-asks "does this step look wrong?". It never decides the cause of a failure,
-that is the causal engine's job, which imports this module.
-
-Rules, each producing Flag objects:
-
-  step_error    FAIL  the step raised or carries an error text
-  agent_status  FAIL / WARN  the agent set the step status itself
-  empty_result  WARN  a tool or io step returned nothing
-  error_result  WARN  a tool or io step returned an object carrying an error
-  type_drift    WARN  a value came out as a string where the inputs had a number, or the reverse
-  mismatch      WARN  a tool or io step answered with a different value for a key it was asked about
-  stale         WARN  a step fed data from an older year than its siblings into the same consumer
-
-Anomaly flags (level "info") never change a step's status:
-
-  slow          the step took far longer than the rest of the run, or than usual
-  large_result  the step returned far more bytes than usual
-  small_result  the step returned far fewer bytes than usual
-
-"Usual" comes from a Baseline built from earlier traces of the same agent.
-"""
 from __future__ import annotations
 
 import re
@@ -71,7 +47,6 @@ class Score:
 
     @property
     def problems(self) -> list[Flag]:
-        """Flags that set the status, most severe first. Anomalies excluded."""
         found = [f for f in self.flags if f.level in (WARN, FAIL)]
         return sorted(found, key=lambda f: -_RANK[f.level])
 
@@ -97,7 +72,6 @@ def _scalar_type(value: Any) -> Optional[str]:
 
 
 def _keyed_scalars(value: Any, out: Optional[dict] = None, key: Optional[str] = None) -> dict[str, list]:
-    """Every scalar inside value, grouped by the object key it sits under."""
     if out is None:
         out = {}
     if isinstance(value, dict):
@@ -117,9 +91,6 @@ def _output(step: Step, trace: Trace) -> Any:
 
 def _short(value: Any) -> str:
     return encode(value)
-
-
-# Single step rules -------------------------------------------------------
 
 
 def rule_step_error(step: Step, trace: Trace) -> list[Flag]:
@@ -209,9 +180,6 @@ STEP_RULES = (
 )
 
 
-# Cross step rules --------------------------------------------------------
-
-
 def _years(value: Any) -> list[int]:
     found = []
     for key, values in _keyed_scalars(value).items():
@@ -228,7 +196,6 @@ def _years(value: Any) -> list[int]:
 
 
 def rule_stale(trace: Trace) -> dict[str, list[Flag]]:
-    """Producers that fed one consumer data from different years: the older ones are stale."""
     by_id = {s.id: s for s in trace.steps}
     flagged: dict[str, list[Flag]] = {}
     for consumer in trace.steps:
@@ -253,9 +220,6 @@ def rule_stale(trace: Trace) -> dict[str, list[Flag]]:
     return flagged
 
 
-# Anomalies ---------------------------------------------------------------
-
-
 def _duration(step: Step) -> Optional[float]:
     if _is_number(step.started_at) and _is_number(step.ended_at):
         return float(step.ended_at) - float(step.started_at)
@@ -273,7 +237,6 @@ def _num(x: float) -> str:
 
 @dataclass
 class Baseline:
-    """Usual duration and output size per step name, from earlier runs."""
 
     durations: dict[str, list[float]] = field(default_factory=dict)
     sizes: dict[str, list[int]] = field(default_factory=dict)
@@ -340,11 +303,7 @@ def anomaly_flags(trace: Trace, baseline: Optional[Baseline] = None) -> dict[str
     return flags
 
 
-# Entry point -------------------------------------------------------------
-
-
 def score_step(step: Step, trace: Trace) -> Score:
-    """Score one step with the single step rules only."""
     score = Score(step.id, step.name)
     for rule in STEP_RULES:
         for flag in rule(step, trace):
@@ -353,7 +312,6 @@ def score_step(step: Step, trace: Trace) -> Score:
 
 
 def score_trace(trace: Trace, baseline: Optional[Baseline] = None) -> dict[str, Score]:
-    """Score every step. Returns step id to Score, in trace order."""
     scores = {step.id: score_step(step, trace) for step in trace.steps}
     for extra in (rule_stale(trace), anomaly_flags(trace, baseline)):
         for sid, flags in extra.items():

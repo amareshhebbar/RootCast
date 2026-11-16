@@ -37,12 +37,6 @@ STORE_ENV = "ROOTCAST_DIR"
 
 
 def format_number(value: float) -> str:
-    """Format a number exactly like ECMAScript Number.prototype.toString.
-
-    This is the cross language number format (RFC 8785 style). It is what
-    makes a Python float like 129.0 and a JS number 129 encode to the same
-    bytes. Non finite numbers have no JSON form and encode as null.
-    """
     if isinstance(value, int):
         return str(value)
     if math.isnan(value) or math.isinf(value):
@@ -85,11 +79,6 @@ def _key(key: Any) -> str:
 
 
 def encode(value: Any, indent: Optional[int] = None, sort_keys: bool = False, _depth: int = 0) -> str:
-    """Encode JSON with the cross language rules shared by every SDK.
-
-    indent None gives the compact form, an int gives the pretty file form
-    with ": " and one entry per line.
-    """
     if value is None:
         return "null"
     if isinstance(value, bool):
@@ -125,7 +114,6 @@ def canonical_bytes(payload: Any) -> bytes:
 
 
 def format_error(exc: BaseException) -> str:
-    """Error text shared by every SDK: "Name: message", or "Name" alone."""
     message = str(exc)
     name = type(exc).__name__
     return name + ": " + message if message else name
@@ -140,7 +128,6 @@ def store_root(root: Optional[str] = None) -> str:
 
 
 def trace_path(run_id: str, root: Optional[str] = None) -> str:
-    """Conventional path of a run inside a trace store: <root>/runs/<run_id>.rootcast.json."""
     return os.path.join(store_root(root), "runs", safe_run_id(run_id) + TRACE_SUFFIX)
 
 
