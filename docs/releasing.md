@@ -1,7 +1,4 @@
----
-title: "Releasing"
-description: "How the Python and Node packages and the docs site are published."
----
+# Releasing
 
 ## Python package
 
@@ -67,8 +64,8 @@ The `rootcast` npm package is published from `packages/node` by the `release-nod
 
 ### Version rules
 
-1. The version lives in `packages/node/package.json`. The Node and Python packages are versioned independently.
-2. The git tag must be `node-v` plus that version, for example `node-v0.1.0`. The workflow refuses a mismatch. Plain `v*` tags release Python only.
+1. The version lives in `packages/node/package.json`. Keep it equal to the Python `__version__`: both packages ship the same version number.
+2. The git tag must be `node-v` plus that version, for example `node-v0.2.0`. The workflow refuses a mismatch. Plain `v*` tags release Python only.
 3. npm never accepts the same version twice, even after an unpublish.
 
 ### Local dry run
@@ -92,29 +89,8 @@ Running the `release-node` workflow by hand runs the same check in CI and stops 
 
 ```bash
 git checkout main && git pull
-git tag node-v0.1.0
-git push origin node-v0.1.0
+git tag node-v0.2.0
+git push origin node-v0.2.0
 ```
 
 The workflow checks, waits for approval on `npm`, publishes with provenance, then installs `rootcast@<version>` from the registry into a fresh project and records a trace (`release_check.mjs --from-registry`).
-
-## Docs site
-
-The docs site is built by Mintlify from this `docs` folder (`docs/docs.json` is the config) and served through Netlify.
-
-### One time setup
-
-1. Create a Mintlify project, install the Mintlify GitHub app on the repository, and in Git Settings enable **docs.json is in a subdirectory** with the path `/docs`. Every push to `main` deploys to `https://<subdomain>.mintlify.site`.
-2. Create a Netlify site from the repository. `netlify.toml` at the repo root proxies every path to the Mintlify site. If the Mintlify subdomain is not `rootcast`, change the target in `netlify.toml`.
-3. Optional: give the Netlify site a custom domain, and set `seo.metatags.canonical` in `docs/docs.json` to it.
-
-If nothing else needs to run on the docs domain, pointing a custom domain straight at Mintlify (`mint add-domain`) is simpler than the Netlify proxy.
-
-### Checking locally
-
-```bash
-cd docs
-npx mint validate
-npx mint broken-links
-npx mint dev
-```

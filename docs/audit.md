@@ -1,7 +1,4 @@
----
-title: "Audit"
-description: "Score every step, build the decision graph and name the step that caused the failure."
----
+# Audit
 
 ```bash
 rootcast audit <trace> [--baseline PATH ...] [--json]
@@ -66,9 +63,9 @@ run rag-21c9  FAIL  answer cites dosage_adult_v3 but the question is pediatric
 from rootcast import Trace, audit
 
 result = audit(Trace.load("rag-21c9.rootcast.json"))
-result.cause      # "step2"
-result.chain      # ["step2", "step3", "step4"]
+result.cause
+result.chain
 result.to_dict()
 ```
 
-The cause is a candidate until it is proven. [Replay](/replay) proves it.
+The cause is a candidate until it is proven. [Replay](./replay.md) proves it.

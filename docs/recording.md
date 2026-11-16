@@ -1,16 +1,11 @@
----
-title: "Recording"
-description: "Capture an agent run as a Rootcast trace from Python or Node."
----
+# Recording
 
 A recorder wraps each step your agent takes and writes one trace file per run. It snapshots values at record time, so a later mutation in your agent never changes the trace, and it never changes what your agent does.
 
 ## Wrap functions
 
 The shortest path is wrapping the functions your agent already calls. Arguments become the step `inputs`, the return value its `output`.
-
-<CodeGroup>
-```python Python
+```python
 from rootcast import Recorder
 
 rec = Recorder(run_id="refund-7af3", meta={"framework": "generic"})
@@ -20,7 +15,7 @@ def lookup_policy(query, region="eu"):
     return search(query, region)
 ```
 
-```js Node
+```js
 import { Recorder } from "rootcast";
 
 const rec = new Recorder({ runId: "refund-7af3", meta: { framework: "generic" } });
@@ -29,8 +24,6 @@ const lookupPolicy = rec.record(async function lookup_policy(query, region = "eu
   return search(query, region);
 }, { kind: "tool" });
 ```
-</CodeGroup>
-
 * Sync functions stay sync, async functions stay async.
 * Python records default argument values. Node records literal defaults (`region = "eu"`) read from the function source.
 * Node reads parameter names from the function source. Minifiers rename them, so pass `params: ["query", "region"]` for bundled code.
@@ -41,29 +34,23 @@ const lookupPolicy = rec.record(async function lookup_policy(query, region = "eu
 ## Record a block
 
 When there is no function to wrap, record a block by hand:
-
-<CodeGroup>
-```python Python
+```python
 with rec.step("decide_refund", kind="decision", inputs={"order": order}) as s:
     decision = decide(order, policy)
     s.output(decision)
 ```
 
-```js Node
+```js
 await rec.step("decide_refund", { kind: "decision", inputs: { order } }, (s) => {
   const decision = decide(order, policy);
   s.output(decision);
   return decision;
 });
 ```
-</CodeGroup>
-
 ## Mark a step from inside
 
 Code inside a recorded step can reach its own step, for example to flag a result that is wrong without raising:
-
-<CodeGroup>
-```python Python
+```python
 from rootcast import current_step
 
 @rec.record(kind="decision")
@@ -74,7 +61,7 @@ def check_answer(answer, intent):
     return answer
 ```
 
-```js Node
+```js
 import { currentStep } from "rootcast";
 
 const checkAnswer = rec.record(function check_answer(answer, intent) {
@@ -85,8 +72,6 @@ const checkAnswer = rec.record(function check_answer(answer, intent) {
   return answer;
 }, { kind: "decision" });
 ```
-</CodeGroup>
-
 Node tracks the current step across `await` with `AsyncLocalStorage`, so this works in async code and nested steps.
 
 A step that raises is marked `fail` with `error` set to `Name: message` (for example `TypeError: seats must be an integer, got str`), and the exception is re raised unchanged.
@@ -98,16 +83,14 @@ A step that raises is marked `fail` with `error` set to `Name: message` (for exa
 ## Saving
 
 ```python
-rec.save("refund-7af3.rootcast.json")   # a path
-rec.save()                              # the trace store: .rootcast/runs/refund-7af3.rootcast.json
+rec.save("refund-7af3.rootcast.json")
+rec.save()
 ```
 
-The run status is `fail` when any step failed, else `pass`. Set it yourself with `rec.mark("fail")`. Outputs over 2048 bytes are stored once in the trace's `blobs` map by sha256. File naming and the store are covered in [Trace files](/trace-files).
+The run status is `fail` when any step failed, else `pass`. Set it yourself with `rec.mark("fail")`. Outputs over 2048 bytes are stored once in the trace's `blobs` map by sha256. File naming and the store are covered in [Trace files](./trace-files.md).
 
 ## Loading and validating
-
-<CodeGroup>
-```python Python
+```python
 from rootcast import Trace, validate
 import json
 
@@ -115,16 +98,12 @@ errors = validate(json.load(open("refund-7af3.rootcast.json")))
 trace = Trace.load("refund-7af3.rootcast.json")
 ```
 
-```js Node
+```js
 import { loadTrace, validateFile } from "rootcast";
 
-const errors = validateFile("refund-7af3.rootcast.json"); // [] when valid
-const trace = loadTrace("refund-7af3.rootcast.json");     // throws TraceValidationError when invalid
+const errors = validateFile("refund-7af3.rootcast.json");
+const trace = loadTrace("refund-7af3.rootcast.json");
 ```
-</CodeGroup>
-
 Both validators apply the same rules and return the same messages.
 
-<Note>
-  The Node package is ESM only and needs Node 18 or newer. It has no runtime dependencies and ships its own types.
-</Note>
+> The Node package is ESM only and needs Node 18 or newer. It has no runtime dependencies and ships its own types.

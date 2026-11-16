@@ -1,7 +1,4 @@
----
-title: "Trace schema"
-description: "The Rootcast trace format v0.1: fields, validation rules and the canonical encoding every SDK shares."
----
+# Trace schema
 
 Version 0.1 (frozen)
 

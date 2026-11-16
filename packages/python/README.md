@@ -6,7 +6,18 @@ The flight recorder for AI agents. Record why an agent made each choice, then fi
 pip install rootcast
 ```
 
-Decorator form, two lines of change:
+See it work on three real failed agent runs, no setup:
+
+```bash
+rootcast demo
+rootcast audit rootcast-demo/stale_policy.rootcast.json
+rootcast replay rootcast-demo/stale_policy.rootcast.json --set step2.output=policy_2026
+rootcast serve --open
+```
+
+`audit` names the step that caused the failure. `replay` changes that one step and shows the run flip from FAIL to PASS. `serve` opens the decision map in your browser.
+
+Record your own agent, decorator form, two lines of change:
 
 ```python
 from rootcast import Recorder
