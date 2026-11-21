@@ -13,6 +13,29 @@ Your AI agent failed in production but did not crash. Rootcast shows you which s
 
 <br/>
 
+## Hackathon submission
+
+Rootcast is our entry for the HackCulture Global AI Hackathon.
+
+| | |
+|---|---|
+| Theme | AI Agents and Intelligent Systems |
+| Problem statement | Build a Benchmarking Platform for AI Agents, Not Just Models |
+| Demo video | [demo/rootcast-demo.mp4](./demo/rootcast-demo.mp4) |
+| Pitch deck | [demo/Rootcast.pdf](./demo/Rootcast.pdf) |
+| Team | Amaresh Hebbar and Ashutosh |
+
+Model benchmarks score one answer. Agents fail somewhere inside a chain of steps, and the final answer hides where. Rootcast benchmarks the agent, not the model:
+
+* Every step of a run gets its own PASS, WARN or FAIL score from real signals: errors, stale data, type drift, mismatched inputs and empty results.
+* Every failed run gets a root cause: the earliest step whose output broke everything after it.
+* Every root cause gets a proof: replay the run with that one step fixed and the run must flip from FAIL to PASS. A cause that does not flip is not reported as proven.
+* The same trace format and the same scores come from Python and Node agents, so two agents built on different stacks are judged by one standard.
+
+The three sample runs in `examples/traces` cover three different agent failure modes (stale data, wrong retrieval, bad tool argument). The engine names the right cause on all three, and the test suite asserts it.
+
+<br/>
+
 ## The problem
 
 When you run an AI agent that does many steps (search, read a file, call a tool, decide, act), sometimes it quietly does the wrong thing. It does not crash. It just produces an answer that looks fine but is actually wrong. You only find out later, when it is already a problem.
@@ -35,7 +58,18 @@ So instead of guessing, you get a clear answer: here is where it broke, and here
 
 ## Try it in one minute
 
-Rootcast is on PyPI. Nothing else to clone or configure:
+From a clone of this repo (Python 3.9 or newer, no other dependencies):
+
+```bash
+git clone https://github.com/amareshhebbar/RootCast.git
+cd RootCast
+pip install -e packages/python
+rootcast audit examples/traces/stale_policy.rootcast.json
+rootcast replay examples/traces/stale_policy.rootcast.json --agent examples/scenarios/stale_policy.py --set step2.output=policy_2026
+rootcast serve --open
+```
+
+Or from PyPI, with nothing to clone:
 
 ```bash
 pip install rootcast
@@ -228,16 +262,16 @@ Everything in Rootcast is built on one small, stable JSON schema. If you can wri
 There are three kinds of tools in this space, and they do not overlap with Rootcast.
 
 * Observability dashboards show you traces. They tell you what happened. They do not tell you which step caused the failure.
-* Evaluation and benchmark tools score many runs against fixed tasks. They tell you a pass rate. They do not explain a single failed run.
+* Model benchmarks and eval tools score final answers against fixed tasks. They tell you a pass rate. They do not tell you which step inside the agent failed, or prove it.
 * Guardrails block bad actions before they happen. They do not help once a quiet failure already slipped through.
 
-Rootcast is the missing middle: it takes one real run that went wrong and gives you the cause and the fix, with proof.
+Rootcast is the missing middle: it benchmarks the agent step by step, and for every run that went wrong it gives you the cause and the fix, with proof.
 
 <br/>
 
 ## Roadmap
 
-Shipped in v0.2.0, on PyPI and npm:
+Shipped in v0.2.0:
 
 * Trace schema v0.1, frozen, with byte identical Python and Node recorders and dependency inference
 * Causal engine: decision graph, PASS WARN FAIL scoring, anomaly flags, earliest divergence and CAUSE
